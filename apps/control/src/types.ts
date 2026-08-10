@@ -64,6 +64,12 @@ export interface AppConfig {
     showWishes: boolean;
     effectQuality: 'low' | 'balanced' | 'high';
     avatarStyle: 'round' | 'hex' | 'neon';
+    threeDEnabled: boolean;
+    cameraMode: 'ambient' | 'cinematic' | 'locked';
+    floorBright: boolean;
+    lasers: boolean;
+    ledScreens: boolean;
+    topPodiums: boolean;
   };
   characters: {
     enabled: boolean;

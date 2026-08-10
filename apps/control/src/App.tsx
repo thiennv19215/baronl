@@ -412,6 +412,15 @@ function CustomizeScreen({ config, patch, notify }: ScreenProps & { notify: (mes
         <Field label="Chất lượng hiệu ứng"><select value={stage.effectQuality} onChange={(e) => void patch('stage', { effectQuality: e.target.value as typeof stage.effectQuality })}><option value="low">Thấp · GPU yếu</option><option value="balanced">Cân bằng</option><option value="high">Cao · GPU rời</option></select></Field>
         <Field label="Kiểu avatar"><select value={stage.avatarStyle} onChange={(e) => void patch('stage', { avatarStyle: e.target.value as typeof stage.avatarStyle })}><option value="round">Tròn</option><option value="hex">Lục giác</option><option value="neon">Neon</option></select></Field>
       </Card>
+      <Card>
+        <CardTitle title="Sân khấu 3D" hint="Đèn, camera và booth được đồng bộ với LIVE."/>
+        <Field label="Chuyển động camera"><select value={stage.cameraMode} onChange={(e) => void patch('stage', { cameraMode: e.target.value as typeof stage.cameraMode })}><option value="ambient">Ambient · lia nhẹ</option><option value="cinematic">Cinematic · lia rộng</option><option value="locked">Locked · cố định</option></select></Field>
+        <Toggle checked={stage.threeDEnabled} onChange={(threeDEnabled) => void patch('stage', { threeDEnabled })} label="Bật Three.js" description="Tắt để chỉ dùng overlay 2D."/>
+        <Toggle checked={stage.floorBright} onChange={(floorBright) => void patch('stage', { floorBright })} label="Sàn nhảy phản ứng nhạc"/>
+        <Toggle checked={stage.lasers} onChange={(lasers) => void patch('stage', { lasers })} label="Laser & spotlight"/>
+        <Toggle checked={stage.ledScreens} onChange={(ledScreens) => void patch('stage', { ledScreens })} label="Màn LED 3D"/>
+        <Toggle checked={stage.topPodiums} onChange={(topPodiums) => void patch('stage', { topPodiums })} label="Bục TOP 1 / 2 / 3"/>
+      </Card>
     </div>
     <Card className="span-2">
       <CardTitle title="Lớp hiển thị" hint="Tắt một lớp không xóa dữ liệu người xem."/>

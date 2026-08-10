@@ -45,6 +45,9 @@ body, button { font-family: inherit; }
 .stage-video { position: absolute; z-index: -5; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .stage::before { content:""; position:absolute; z-index:-4; inset:0; opacity:.58; background:linear-gradient(180deg,rgba(2,3,11,.1),rgba(7,7,20,.18) 45%,rgba(4,4,12,.68)); }
 .stage-viewport.transparent .stage::before { opacity: .18; }
+.three-stage { position:absolute; z-index:0; inset:0; overflow:hidden; pointer-events:none; mix-blend-mode:screen; opacity:.82; }
+.three-stage canvas { display:block; width:100%; height:100%; }
+.stage-viewport.transparent .three-stage { opacity:.48; }
 .stage-vignette { position:absolute;z-index:20;inset:0;pointer-events:none;box-shadow:inset 0 0 14cqw rgba(1,2,8,.72); }
 
 .nebula-cloud { position:absolute;z-index:-2;width:75cqw;height:75cqw;border-radius:50%;filter:blur(9cqw);opacity:.2;pointer-events:none; }

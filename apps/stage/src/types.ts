@@ -51,6 +51,12 @@ export interface StageAppearance {
   showWishes: boolean;
   effectQuality: 'low' | 'balanced' | 'high';
   avatarStyle: 'round' | 'hex' | 'neon';
+  threeDEnabled: boolean;
+  cameraMode: 'ambient' | 'cinematic' | 'locked';
+  floorBright: boolean;
+  lasers: boolean;
+  ledScreens: boolean;
+  topPodiums: boolean;
 }
 
 export interface StageState {

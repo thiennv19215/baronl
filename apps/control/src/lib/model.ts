@@ -28,6 +28,12 @@ export const defaultConfig: AppConfig = {
     showWishes: true,
     effectQuality: 'balanced',
     avatarStyle: 'neon',
+    threeDEnabled: true,
+    cameraMode: 'ambient',
+    floorBright: true,
+    lasers: true,
+    ledScreens: true,
+    topPodiums: true,
   },
   characters: {
     enabled: true,

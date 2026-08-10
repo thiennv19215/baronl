@@ -40,6 +40,12 @@ export const appConfigSchema = z.object({
     showWishes: z.boolean().default(true),
     effectQuality: z.enum(["low", "balanced", "high"]).default("balanced"),
     avatarStyle: z.enum(["round", "hex", "neon"]).default("neon"),
+    threeDEnabled: z.boolean().default(true),
+    cameraMode: z.enum(["ambient", "cinematic", "locked"]).default("ambient"),
+    floorBright: z.boolean().default(true),
+    lasers: z.boolean().default(true),
+    ledScreens: z.boolean().default(true),
+    topPodiums: z.boolean().default(true),
     audioOwner: z.enum(["stage-window", "obs"]).default("stage-window"),
   }),
   music: z.object({

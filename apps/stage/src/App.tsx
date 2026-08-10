@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { getWebSocketUrl, initials, initialStageState, normalizeEnvelope, stageReducer } from './stageState';
+import { ThreeStage } from './ThreeStage';
 import type { GiftEffect, StageAction, StageConnection, StageEventEnvelope, StageState, StageViewer } from './types';
 
 const params = new URLSearchParams(window.location.search);
@@ -222,6 +223,7 @@ function App() {
   return <main className={`stage-viewport quality-${quality} ${state.appearance.transparent ? 'transparent' : ''}`}>
     <section className={`stage theme-${state.appearance.theme}`} style={backgroundStyle} aria-label="Sân khấu OrbitStage LIVE">
       {state.appearance.backgroundType === 'video' && backgroundSource && <video className="stage-video" src={backgroundSource} autoPlay muted loop playsInline/>}
+      {state.appearance.threeDEnabled && <ThreeStage quality={quality} live={state.live} musicPlaying={state.music.playing} speaking={Boolean(state.speech)} theme={state.appearance.theme} settings={{ cameraMode: state.appearance.cameraMode, floorBright: state.appearance.floorBright, lasers: state.appearance.lasers, ledScreens: state.appearance.ledScreens, topPodiums: state.appearance.topPodiums }}/>} 
       <div className="stage-vignette"/>
       <div className="nebula-cloud cloud-a"/><div className="nebula-cloud cloud-b"/>
       {quality !== 'low' && <StarField quality={quality}/>} 
