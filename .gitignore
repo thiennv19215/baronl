@@ -1,0 +1,17 @@
+node_modules/
+dist/
+release/
+coverage/
+test-results/
+playwright-report/
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+diagnostics-*.zip
+updates/
+backups/
+.DS_Store
+Thumbs.db
+

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1280" role="img" aria-labelledby="title desc">
+  <title id="title">Host character placeholder</title>
+  <desc id="desc">Original geometric host silhouette for fallback only</desc>
+  <defs>
+    <linearGradient id="coat" x1="150" y1="430" x2="590" y2="1120">
+      <stop stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#151b31"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="360" cy="1190" rx="260" ry="56" fill="#22d3ee" opacity=".22"/>
+  <circle cx="360" cy="274" r="150" fill="#94a3b8" stroke="#22d3ee" stroke-width="14"/>
+  <path d="M220 250c18-132 104-180 198-135 63 30 92 86 89 154-69-12-122-44-165-94-24 51-67 77-122 75Z" fill="#090b14"/>
+  <path d="M130 1110c18-342 76-638 230-638s212 296 230 638" fill="url(#coat)" stroke="#8b5cf6" stroke-width="16"/>
+  <path d="m290 484 70 108 70-108" fill="none" stroke="#a3e635" stroke-width="16"/>
+  <circle cx="307" cy="278" r="12" fill="#090b14"/>
+  <circle cx="413" cy="278" r="12" fill="#090b14"/>
+  <path d="M324 346c28 18 48 18 72 0" fill="none" stroke="#090b14" stroke-width="10" stroke-linecap="round"/>
+  <rect x="112" y="1010" width="496" height="94" rx="47" fill="#090b14" stroke="#22d3ee" stroke-width="6"/>
+  <text x="360" y="1052" fill="#f8fafc" font-family="Segoe UI, sans-serif" font-size="34" font-weight="700" text-anchor="middle">HOST PLACEHOLDER</text>
+  <text x="360" y="1084" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="20" text-anchor="middle">NO LIVE2D MODEL INCLUDED</text>
+</svg>

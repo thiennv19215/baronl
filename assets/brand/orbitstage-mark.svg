@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">OrbitStage Live mark</title>
+  <desc id="desc">Original violet and cyan orbital stage symbol</desc>
+  <defs>
+    <linearGradient id="orbit" x1="80" y1="64" x2="432" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22d3ee"/>
+      <stop offset="0.52" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#a3e635"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#090b14"/>
+  <ellipse cx="256" cy="256" rx="178" ry="104" fill="none" stroke="url(#orbit)" stroke-width="26" transform="rotate(-28 256 256)"/>
+  <ellipse cx="256" cy="256" rx="178" ry="104" fill="none" stroke="#8b5cf6" stroke-opacity=".45" stroke-width="12" transform="rotate(54 256 256)"/>
+  <path d="M170 342h172l-28 48H198z" fill="#151b31" stroke="#22d3ee" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="256" cy="234" r="72" fill="#101526" stroke="url(#orbit)" stroke-width="18"/>
+  <path d="m238 194 62 40-62 40z" fill="#f8fafc"/>
+  <circle cx="410" cy="122" r="18" fill="#a3e635"/>
+</svg>

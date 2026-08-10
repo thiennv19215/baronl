@@ -1,0 +1,35 @@
+appId: live.orbitstage.desktop
+productName: OrbitStage Live
+copyright: Copyright © 2026 OrbitStage contributors
+asar: true
+directories:
+  output: release
+  buildResources: assets/brand
+files:
+  - apps/desktop/dist/**
+  - apps/control/dist/**
+  - apps/stage/dist/**
+  - package.json
+extraResources:
+  - from: assets
+    to: assets
+    filter:
+      - "**/*"
+artifactName: OrbitStage-Live-${version}-${arch}.${ext}
+win:
+  icon: assets/brand/icon.png
+  target:
+    - target: nsis
+      arch:
+        - x64
+  requestedExecutionLevel: asInvoker
+  verifyUpdateCodeSignature: true
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: OrbitStage Live
+  deleteAppDataOnUninstall: false

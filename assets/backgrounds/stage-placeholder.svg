@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" role="img" aria-labelledby="title desc">
+  <title id="title">OrbitStage stage background placeholder</title>
+  <desc id="desc">Original vertical neon grid with an explicit placeholder label</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#090b14"/>
+      <stop offset=".55" stop-color="#151b31"/>
+      <stop offset="1" stop-color="#101526"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop stop-color="#8b5cf6" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="90" height="90" patternUnits="userSpaceOnUse">
+      <path d="M90 0H0V90" fill="none" stroke="#22d3ee" stroke-opacity=".12" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <circle cx="210" cy="430" r="480" fill="url(#glow)"/>
+  <circle cx="930" cy="1320" r="560" fill="url(#glow)" opacity=".55"/>
+  <rect width="1080" height="1920" fill="url(#grid)"/>
+  <path d="M90 1550 540 1280l450 270v250H90z" fill="#090b14" fill-opacity=".75" stroke="#8b5cf6" stroke-width="8"/>
+  <text x="540" y="900" fill="#f8fafc" font-family="Segoe UI, sans-serif" font-size="72" font-weight="700" text-anchor="middle">ORBITSTAGE</text>
+  <text x="540" y="980" fill="#22d3ee" font-family="Segoe UI, sans-serif" font-size="36" letter-spacing="12" text-anchor="middle">PLACEHOLDER</text>
+  <text x="540" y="1050" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="28" text-anchor="middle">Replace with a licensed stage asset</text>
+</svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Guest avatar placeholder</title>
+  <desc id="desc">Original neutral guest silhouette labeled placeholder</desc>
+  <defs>
+    <linearGradient id="ring" x1="60" y1="40" x2="470" y2="470">
+      <stop stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="256" fill="#101526"/>
+  <circle cx="256" cy="256" r="224" fill="none" stroke="url(#ring)" stroke-width="24"/>
+  <circle cx="256" cy="194" r="82" fill="#94a3b8"/>
+  <path d="M112 420c14-92 70-140 144-140s130 48 144 140" fill="#64748b"/>
+  <rect x="126" y="392" width="260" height="54" rx="27" fill="#090b14" stroke="#22d3ee" stroke-width="4"/>
+  <text x="256" y="429" fill="#f8fafc" font-family="Segoe UI, sans-serif" font-size="26" font-weight="700" text-anchor="middle">GUEST PLACEHOLDER</text>
+</svg>

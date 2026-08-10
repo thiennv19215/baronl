@@ -1,0 +1,132 @@
+import { z } from "zod";
+
+export const DEFAULT_PORT = 17_321;
+export const DEFAULT_TIKFINITY_URL = "ws://127.0.0.1:21213/";
+
+const hexColor = z.string().regex(/^#[0-9a-f]{6}$/i);
+const localWebSocketUrl = z.string().url().refine((value) => {
+  const parsed = new URL(value);
+  return (
+    (parsed.protocol === "ws:" || parsed.protocol === "wss:") &&
+    ["127.0.0.1", "localhost", "::1"].includes(parsed.hostname)
+  );
+}, "TikFinity must use a loopback WebSocket URL");
+
+export const appConfigSchema = z.object({
+  version: z.literal(1),
+  live: z.object({
+    tiktokAccount: z.string().trim().max(64).default(""),
+    tikfinityUrl: localWebSocketUrl.default(DEFAULT_TIKFINITY_URL),
+    localPort: z.number().int().min(1024).max(65_535).default(DEFAULT_PORT),
+    reconnect: z.boolean().default(true),
+    spamWindowSeconds: z.number().min(0.25).max(60).default(2),
+    maxEventsPerViewer: z.number().int().min(1).max(120).default(20)
+  }),
+  led: z.object({
+    enabled: z.boolean().default(true),
+    text: z.string().max(120).default("ORBITSTAGE LIVE • CHÀO MỪNG BẠN"),
+    speed: z.number().min(0).max(100).default(35),
+    color: hexColor.default("#f4f7ff"),
+    glowColor: hexColor.default("#7c5cff"),
+    style: z.enum(["marquee", "pulse", "static"]).default("marquee")
+  }),
+  stage: z.object({
+    theme: z.enum(["cosmos", "aurora", "midnight"]).default("cosmos"),
+    backgroundType: z.enum(["gradient", "image", "video"]).default("gradient"),
+    backgroundSource: z.string().max(1024).default(""),
+    showChat: z.boolean().default(true),
+    showLeaderboard: z.boolean().default(true),
+    showLevel: z.boolean().default(true),
+    showWishes: z.boolean().default(true),
+    effectQuality: z.enum(["low", "balanced", "high"]).default("balanced"),
+    avatarStyle: z.enum(["round", "hex", "neon"]).default("neon"),
+    audioOwner: z.enum(["stage-window", "obs"]).default("stage-window"),
+  }),
+  music: z.object({
+    volume: z.number().min(0).max(100).default(70),
+    playlist: z.array(z.object({
+      id: z.string().min(1).max(80),
+      title: z.string().min(1).max(160),
+      path: z.string().max(1024),
+      rights: z.enum(["owned", "licensed", "cc0", "placeholder"])
+    })).max(500).default([]),
+    currentTrackId: z.string().max(80).nullable().default(null),
+    playing: z.boolean().default(false)
+  }),
+  characters: z.object({
+    enabled: z.boolean().default(true),
+    dualHost: z.boolean().default(false),
+    hostA: z.string().max(120).default("nova"),
+    hostB: z.string().max(120).default("pulse"),
+    lipSync: z.boolean().default(true),
+    blink: z.boolean().default(true),
+    shuffle: z.boolean().default(false)
+  }),
+  ai: z.object({
+    enabled: z.boolean().default(false),
+    provider: z.enum(["openai", "compatible", "groq", "deepseek", "qwen", "glm", "grok"]).default("openai"),
+    endpoint: z.string().max(500).refine((value) => value === "" || z.url().safeParse(value).success, "Endpoint must be blank or a URL").default(""),
+    model: z.string().max(160).default("gpt-4.1-mini"),
+    persona: z.string().max(4_000).default("Bạn là MC thân thiện, sôi động và tôn trọng người xem."),
+    autoHype: z.boolean().default(false),
+    hypeIntervalSeconds: z.number().int().min(15).max(3_600).default(120),
+    rateLimitPerMinute: z.number().int().min(1).max(60).default(12),
+    contentFilter: z.boolean().default(true),
+    ttsProvider: z.enum(["openai", "edge"]).default("edge"),
+    ttsVoice: z.string().max(120).default("vi-VN-HoaiMyNeural"),
+    ttsVolume: z.number().min(0).max(100).default(80)
+  }),
+  license: z.object({
+    enabled: z.boolean().default(false),
+    serverUrl: z.string().url().optional(),
+    offlineGraceDays: z.number().int().min(0).max(365).default(7)
+  }),
+  update: z.object({
+    enabled: z.boolean().default(false),
+    feedUrl: z.string().url().optional(),
+    channel: z.enum(["stable", "beta"]).default("stable"),
+    automaticCheck: z.boolean().default(true)
+  })
+});
+
+export type AppConfig = z.infer<typeof appConfigSchema>;
+
+export const DEFAULT_CONFIG: AppConfig = appConfigSchema.parse({
+  version: 1,
+  live: {},
+  led: {},
+  stage: {},
+  music: {},
+  characters: {},
+  ai: {},
+  license: {},
+  update: {}
+});
+
+export type SecretName = "aiApiKey" | "licenseToken" | "updateToken";
+
+export function mergeConfig(current: AppConfig, patch: unknown): AppConfig {
+  if (!patch || typeof patch !== "object" || Array.isArray(patch)) {
+    throw new Error("Config patch must be an object");
+  }
+
+  const incoming = patch as Record<string, unknown>;
+  const merged = structuredClone(current) as Record<string, unknown>;
+  for (const section of ["live", "led", "stage", "music", "characters", "ai", "license", "update"] as const) {
+    if (incoming[section] !== undefined) {
+      if (!incoming[section] || typeof incoming[section] !== "object" || Array.isArray(incoming[section])) {
+        throw new Error(`Config section ${section} must be an object`);
+      }
+      merged[section] = {
+        ...(merged[section] as Record<string, unknown>),
+        ...(incoming[section] as Record<string, unknown>)
+      };
+    }
+  }
+  merged.version = 1;
+  return appConfigSchema.parse(merged);
+}
+
+export function publicConfig(config: AppConfig): AppConfig {
+  return structuredClone(config);
+}

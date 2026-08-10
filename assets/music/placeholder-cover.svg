@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Music placeholder cover</title>
+  <desc id="desc">Original abstract record cover labeled placeholder</desc>
+  <rect width="512" height="512" rx="64" fill="#101526"/>
+  <circle cx="256" cy="240" r="164" fill="#090b14" stroke="#8b5cf6" stroke-width="18"/>
+  <circle cx="256" cy="240" r="106" fill="none" stroke="#22d3ee" stroke-opacity=".45" stroke-width="8"/>
+  <circle cx="256" cy="240" r="38" fill="#a3e635"/>
+  <path d="M138 112a164 164 0 0 1 236 24" fill="none" stroke="#fb7185" stroke-width="12" stroke-linecap="round"/>
+  <rect x="76" y="402" width="360" height="58" rx="29" fill="#151b31"/>
+  <text x="256" y="441" fill="#f8fafc" font-family="Segoe UI, sans-serif" font-size="27" font-weight="700" text-anchor="middle">AUDIO PLACEHOLDER</text>
+</svg>

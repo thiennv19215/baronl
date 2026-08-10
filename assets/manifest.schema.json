@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orbitstage.invalid/schemas/asset-manifest-v1.json",
+  "title": "OrbitStage asset registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "assets"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "mimeType", "path", "bytes", "sha256", "placeholder", "source", "rights", "metadata"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "category": { "enum": ["brand", "background", "avatar", "gift", "badge", "character", "texture", "audio", "video", "music"] },
+          "mimeType": { "type": "string", "minLength": 3 },
+          "path": { "type": "string", "pattern": "^assets/[a-zA-Z0-9._/-]+$" },
+          "bytes": { "type": "integer", "minimum": 1 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "placeholder": { "type": "boolean" },
+          "source": { "enum": ["generated-in-repository", "project-owner", "third-party"] },
+          "rights": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "holder", "license", "evidence", "distribution"],
+            "properties": {
+              "status": { "enum": ["approved", "restricted", "pending", "rejected"] },
+              "holder": { "type": "string", "minLength": 1 },
+              "license": { "type": "string", "minLength": 1 },
+              "evidence": { "type": "string", "minLength": 1 },
+              "distribution": { "type": "string", "minLength": 1 }
+            }
+          },
+          "metadata": { "type": "object" }
+        }
+      }
+    }
+  }
+}
