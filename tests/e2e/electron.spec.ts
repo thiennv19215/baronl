@@ -112,6 +112,12 @@ test.describe.serial("OrbitStage Electron", () => {
     await expect(stagePage.getByText("ORBITSTAGE", { exact: true }).first()).toBeVisible();
     await expect.poll(async () => stagePage.locator('.live2d-host').evaluate((node) => ({ failed: node.classList.contains('failed'), canvasWidth: node.querySelector('canvas')?.width ?? 0 })), { timeout: 15_000 }).toEqual({ failed: false, canvasWidth: expect.any(Number) });
     expect(await stagePage.locator('.live2d-canvas').evaluate((canvas) => (canvas as HTMLCanvasElement).width)).toBeGreaterThan(0);
+    const mcPosition = await stagePage.locator('.stage-character.nova').evaluate((node) => {
+      const character = node.getBoundingClientRect();
+      const stage = node.closest('.stage')?.getBoundingClientRect();
+      return { characterCenter: character.left + character.width / 2, stageCenter: stage ? stage.left + stage.width / 2 : 0 };
+    });
+    expect(Math.abs(mcPosition.characterCenter - mcPosition.stageCenter)).toBeLessThan(2);
 
     await controlPage.getByRole("button", { name: /^Test LIVE/ }).click();
     await expect(controlPage.getByRole("heading", { level: 1, name: "Test LIVE" })).toBeVisible();
@@ -126,6 +132,8 @@ test.describe.serial("OrbitStage Electron", () => {
     await expect(stagePage.getByRole("heading", { level: 2, name: "E2E Comet" })).toBeVisible({ timeout: 8_000 });
     await expect(stagePage.getByText("E2E Nova", { exact: true }).first()).toBeVisible();
     await expect(stagePage.locator(".floor-actor").filter({ hasText: "E2E Nova" })).toBeVisible();
+    await expect(stagePage.locator(".floor-actor").filter({ hasText: "E2E Nova" }).locator(".floor-actor-sprite")).toHaveCSS("background-image", /char-\d{2}-sheet\.png/);
+    await expect(stagePage.locator(".floor-actor").filter({ hasText: "E2E Nova" }).locator(".floor-actor-sprite")).not.toHaveCSS("background-image", /vip\d-sheet\.png/);
     await expect(stagePage.getByText("×2", { exact: true }).first()).toBeVisible();
     await expect(stagePage.locator(".chat-bubble").filter({ hasText: "E2E Comet ×2" })).toHaveCount(1);
 

@@ -436,15 +436,14 @@ function DanceFloorActors({ viewers, command, spotlightViewerId, settings }: { v
     const left = columns === 1 ? 50 : 5 + centeredColumn * (90 / Math.max(1, columns - 1)) + jitterX;
     const top = rows === 1 ? 48 : 6 + row * (86 / Math.max(1, rows - 1)) + jitterY;
     const vipRank = vipRanks.get(viewer.id);
-    const vipFrames = vipRank === 1 ? 34 : vipRank ? 17 : undefined;
-    return { viewer, frames: vipFrames ?? danceSprites[spriteIndex] ?? 17, sprite: spriteIndex + 1, vipRank, left: Math.max(3, Math.min(97, left)), top: Math.max(3, Math.min(92, top)), delay: -((hash % 1400) / 1000), density, wanderX: ((((hash >>> 3) % 9) - 4) * .42 * density), wanderY: ((((hash >>> 12) % 5) + 1) * .24 * density), wanderDuration: 4.8 + (hash % 32) / 10 };
+    return { viewer, frames: danceSprites[spriteIndex] ?? 17, sprite: spriteIndex + 1, vipRank, left: Math.max(3, Math.min(97, left)), top: Math.max(3, Math.min(92, top)), delay: -((hash % 1400) / 1000), density, wanderX: ((((hash >>> 3) % 9) - 4) * .42 * density), wanderY: ((((hash >>> 12) % 5) + 1) * .24 * density), wanderDuration: 4.8 + (hash % 32) / 10 };
     });
   }, [settings.autoFitCrowd, settings.maxFloorActors, viewers]);
   const edge = (100 - settings.floorWidth) / 2;
   return <div className={`dance-floor-actors ${command === 'dance' || command === 'party' ? 'party' : ''}`} style={{ left: `${edge}%`, right: `${edge}%` }}>
     {actors.map(({ viewer, frames, sprite, vipRank, left, top, delay, density, wanderX, wanderY, wanderDuration }) => {
       const style = { left: `${left}%`, top: `${top}%`, zIndex: Math.round(top), '--actor-scale': (.66 + (top / 100) * .58) * density, '--actor-delay': `${delay}s`, '--wander-x': `${wanderX}cqw`, '--wander-y': `${wanderY}cqw`, '--wander-duration': `${wanderDuration}s` } as React.CSSProperties;
-      const spriteFile = vipRank ? `vip${vipRank}-sheet.png` : `char-${String(sprite).padStart(2, '0')}-sheet.png`;
+      const spriteFile = `char-${String(sprite).padStart(2, '0')}-sheet.png`;
       const spriteStyle = { backgroundImage: `url("${projectAssetRoot}/avatars/dance/${spriteFile}")`, backgroundSize: `${frames * 100}% 100%`, animationTimingFunction: `steps(${frames})` } as React.CSSProperties;
       const wingFile = vipRank ? `top${vipRank}.png` : viewer.level >= 25 ? 'canh3.png' : undefined;
       const wingStyle = wingFile ? { backgroundImage: `url("${projectAssetRoot}/fx/dance/${wingFile}")` } : undefined;
