@@ -81,17 +81,6 @@ export const appConfigSchema = z.object({
     ttsProvider: z.enum(["openai", "edge"]).default("edge"),
     ttsVoice: z.string().max(120).default("vi-VN-HoaiMyNeural"),
     ttsVolume: z.number().min(0).max(100).default(80)
-  }),
-  license: z.object({
-    enabled: z.boolean().default(false),
-    serverUrl: z.string().url().optional(),
-    offlineGraceDays: z.number().int().min(0).max(365).default(7)
-  }),
-  update: z.object({
-    enabled: z.boolean().default(false),
-    feedUrl: z.string().url().optional(),
-    channel: z.enum(["stable", "beta"]).default("stable"),
-    automaticCheck: z.boolean().default(true)
   })
 });
 
@@ -104,12 +93,10 @@ export const DEFAULT_CONFIG: AppConfig = appConfigSchema.parse({
   stage: {},
   music: {},
   characters: {},
-  ai: {},
-  license: {},
-  update: {}
+  ai: {}
 });
 
-export type SecretName = "aiApiKey" | "licenseToken" | "updateToken";
+export type SecretName = "aiApiKey";
 
 export function mergeConfig(current: AppConfig, patch: unknown): AppConfig {
   if (!patch || typeof patch !== "object" || Array.isArray(patch)) {
@@ -118,7 +105,7 @@ export function mergeConfig(current: AppConfig, patch: unknown): AppConfig {
 
   const incoming = patch as Record<string, unknown>;
   const merged = structuredClone(current) as Record<string, unknown>;
-  for (const section of ["live", "led", "stage", "music", "characters", "ai", "license", "update"] as const) {
+  for (const section of ["live", "led", "stage", "music", "characters", "ai"] as const) {
     if (incoming[section] !== undefined) {
       if (!incoming[section] || typeof incoming[section] !== "object" || Array.isArray(incoming[section])) {
         throw new Error(`Config section ${section} must be an object`);

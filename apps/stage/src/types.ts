@@ -76,6 +76,7 @@ export interface StageState {
   sessionLikes: number;
   speech?: { host: 'a' | 'b'; text?: string; until?: number };
   aiCaption?: { text: string; source?: string; until: number };
+  stageCommand?: { name: string; until: number };
   audioOwner?: boolean;
 }
 

@@ -1,5 +1,5 @@
-import type { AppConfig, ConfigPatch, FakeLiveEvent, GiftWishRecord, OrbitStageFacade, RuntimeSnapshot, UpdateSnapshot } from './types';
-import { defaultConfig, defaultSnapshot, defaultUpdate, mergeConfig } from './lib/model';
+import type { AppConfig, ConfigPatch, FakeLiveEvent, GiftWishRecord, OrbitStageFacade, RuntimeSnapshot } from './types';
+import { defaultConfig, defaultSnapshot, mergeConfig } from './lib/model';
 
 const getFacade = (): OrbitStageFacade | undefined => window.orbitStage;
 
@@ -117,35 +117,6 @@ export const bridge = {
     const facade = getFacade();
     if (facade?.exportDiagnostics) return facade.exportDiagnostics();
     return invokeFallback<string>('diagnostics:export');
-  },
-
-  async checkUpdate(): Promise<UpdateSnapshot> {
-    const facade = getFacade();
-    const result = facade?.checkForUpdates
-      ? await facade.checkForUpdates()
-      : await invokeFallback<UpdateSnapshot>('update:check');
-    return result ?? defaultUpdate;
-  },
-
-  async installUpdate(): Promise<void> {
-    const facade = getFacade();
-    if (facade?.installUpdate) await facade.installUpdate();
-    else await invokeFallback('update:install');
-  },
-
-  async rollback(): Promise<void> {
-    const facade = getFacade();
-    if (facade?.rollbackUpdate) await facade.rollbackUpdate();
-    else await invokeFallback('update:rollback');
-  },
-
-  async activateLicense(key: string): Promise<{ active: boolean; message?: string }> {
-    const facade = getFacade();
-    if (facade?.activateLicense) return facade.activateLicense(key);
-    return (await invokeFallback<{ active: boolean; message?: string }>('license:activate', { key })) ?? {
-      active: false,
-      message: 'Module license đang tắt. OrbitStage vẫn chạy miễn phí.',
-    };
   },
 
   async saveSecret(name: 'aiApiKey', value: string): Promise<void> {

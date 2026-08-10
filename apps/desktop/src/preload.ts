@@ -21,11 +21,6 @@ const INVOKE_CHANNELS = new Set([
   "tts:test",
   "diagnostics:export",
   "diagnostics:health",
-  "update:check",
-  "update:install",
-  "update:rollback",
-  "license:activate",
-  "license:status",
   "secret:set",
   "secret:status"
 ]);
@@ -69,11 +64,7 @@ const facade = Object.freeze({
   selectAsset: (kind: string) => invoke("asset:select", { kind }),
   testAi: (prompt: string) => invoke("ai:test", { prompt }),
   testTts: (text: string) => invoke("tts:test", { text }),
-  exportDiagnostics: () => invoke("diagnostics:export"),
-  checkForUpdates: () => invoke("update:check"),
-  installUpdate: () => invoke("update:install"),
-  rollbackUpdate: () => invoke("update:rollback"),
-  activateLicense: (key: string) => invoke("license:activate", { key })
+  exportDiagnostics: () => invoke("diagnostics:export")
 });
 
 contextBridge.exposeInMainWorld("orbitStage", facade);

@@ -3,7 +3,6 @@ import { appConfigSchema, DEFAULT_CONFIG, mergeConfig } from "./app-config";
 
 describe("desktop app config", () => {
   it("starts in free mode with loopback-only services", () => {
-    expect(DEFAULT_CONFIG.license.enabled).toBe(false);
     expect(DEFAULT_CONFIG.live.localPort).toBe(17_321);
     expect(DEFAULT_CONFIG.live.tikfinityUrl).toBe("ws://127.0.0.1:21213/");
   });

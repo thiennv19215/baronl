@@ -8,6 +8,9 @@ interface ThreeStageProps {
   musicPlaying: boolean;
   speaking: boolean;
   theme: 'cosmos' | 'aurora' | 'midnight';
+  command?: string;
+  leaderCount: number;
+  giftActive: boolean;
   settings: { cameraMode: 'ambient' | 'cinematic' | 'locked'; floorBright: boolean; lasers: boolean; ledScreens: boolean; topPodiums: boolean };
 }
 
@@ -34,18 +37,24 @@ function createSoftGlowTexture() {
 }
 
 /** Transparent WebGL layer; the interactive LIVE overlay remains DOM above it. */
-export function ThreeStage({ quality, live, musicPlaying, speaking, theme, settings }: ThreeStageProps) {
+export function ThreeStage({ quality, live, musicPlaying, speaking, theme, command, leaderCount, giftActive, settings }: ThreeStageProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const liveRef = useRef(live);
   const musicRef = useRef(musicPlaying);
   const speakingRef = useRef(speaking);
   const themeRef = useRef(theme);
   const settingsRef = useRef(settings);
+  const commandRef = useRef(command);
+  const leaderCountRef = useRef(leaderCount);
+  const giftActiveRef = useRef(giftActive);
   liveRef.current = live;
   musicRef.current = musicPlaying;
   speakingRef.current = speaking;
   themeRef.current = theme;
   settingsRef.current = settings;
+  commandRef.current = command;
+  leaderCountRef.current = leaderCount;
+  giftActiveRef.current = giftActive;
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -147,6 +156,19 @@ export function ThreeStage({ quality, live, musicPlaying, speaking, theme, setti
       ring.rotation.x = -Math.PI / 2; ring.position.set(x, y + (index === 0 ? .09 : .06), z); podiums.add(ring);
     });
     group.add(podiums);
+    const actors = new THREE.Group();
+    const actorPositions = [[0, 1.2, -2.2], [-2.05, -.15, -1.75], [2.05, -.15, -1.75]] as const;
+    actorPositions.forEach(([x, y, z], index) => {
+      const actor = new THREE.Group();
+      const color = [0xffd766, 0xb9d4ff, 0xffad78][index] ?? 0xffffff;
+      const body = new THREE.Mesh(new THREE.CapsuleGeometry(.26, .62, 6, 12), new THREE.MeshStandardMaterial({ color: 0x24162f, emissive: color, emissiveIntensity: .42, metalness: .4, roughness: .35 }));
+      const head = new THREE.Mesh(new THREE.SphereGeometry(.3, 18, 14), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: .25, metalness: .22, roughness: .38 }));
+      head.position.y = .77;
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(.43, .025, 8, 32), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .8 }));
+      halo.rotation.x = Math.PI / 2; halo.position.y = 1.18;
+      actor.add(body, head, halo); actor.position.set(x, y, z); actor.userData.baseY = y; actors.add(actor);
+    });
+    group.add(actors);
 
     const particleCount = quality === 'high' ? 720 : 340;
     const positions = new Float32Array(particleCount * 3);
@@ -213,6 +235,7 @@ export function ThreeStage({ quality, live, musicPlaying, speaking, theme, setti
       }
       const energy = (liveRef.current ? 1 : 0.3) * (musicRef.current ? 1.2 : 0.62) * (speakingRef.current ? 1.3 : 1);
       const stageSettings = settingsRef.current;
+      const commandBoost = (["party", "dance", "heart"].includes(commandRef.current ?? "") || giftActiveRef.current) ? 1.7 : 1;
       particles.rotation.y = elapsed * 0.028;
       particles.position.y = Math.sin(elapsed * 0.32) * 0.14;
       rings.rotation.y = elapsed * 0.095 * energy;
@@ -227,11 +250,17 @@ export function ThreeStage({ quality, live, musicPlaying, speaking, theme, setti
       });
       mainScreen.visible = rightScreen.visible = leftScreen.visible = stageSettings.ledScreens;
       podiums.visible = stageSettings.topPodiums;
-      lasers.visible = stageSettings.lasers;
+      actors.visible = stageSettings.topPodiums;
+      actors.children.forEach((actor, index) => {
+        actor.visible = index < leaderCountRef.current;
+        actor.position.y = Number(actor.userData.baseY) + Math.sin(elapsed * 1.8 + index) * .07;
+        actor.rotation.y = Math.sin(elapsed * .7 + index) * .18;
+      });
+      lasers.visible = stageSettings.lasers || commandBoost > 1;
       mainScreen.material.opacity = 0.52 + Math.max(0, Math.sin(elapsed * 1.15)) * 0.28 * energy;
       city.position.y = Math.sin(elapsed * 0.22) * 0.08;
-      keyLight.intensity = 11 + Math.sin(elapsed * 1.3) * 3 * energy;
-      rimLight.intensity = 8 + Math.cos(elapsed * 1.7) * 3 * energy;
+      keyLight.intensity = (11 + Math.sin(elapsed * 1.3) * 3 * energy) * commandBoost;
+      rimLight.intensity = (8 + Math.cos(elapsed * 1.7) * 3 * energy) * commandBoost;
       accentLight.intensity = speakingRef.current ? 19 : 8;
       movingSpots.forEach((spot, index) => {
         spot.intensity = 7 + energy * 10;
@@ -240,7 +269,8 @@ export function ThreeStage({ quality, live, musicPlaying, speaking, theme, setti
       });
       lasers.children.forEach((laser, index) => { laser.rotation.y = Math.sin(elapsed * .7 + index) * .55; ((laser as THREE.Line).material as THREE.LineBasicMaterial).opacity = .12 + energy * .3; });
       if (stageSettings.cameraMode !== 'locked') {
-        const sway = stageSettings.cameraMode === 'cinematic' ? .95 : .34;
+        const focusCommand = ["camera", "quay"].includes(commandRef.current ?? "");
+        const sway = focusCommand ? 1.45 : stageSettings.cameraMode === 'cinematic' ? .95 : .34;
         camera.position.x = Math.sin(elapsed * .16) * sway;
         camera.position.y = 4.8 + Math.sin(elapsed * .12) * sway * .32;
         camera.lookAt(0, 1.5, -3.4);
@@ -252,7 +282,7 @@ export function ThreeStage({ quality, live, musicPlaying, speaking, theme, setti
       cancelAnimationFrame(frame);
       observer.disconnect();
       particlesGeometry.dispose(); particlesMaterial.dispose(); floor.geometry.dispose(); (floor.material as THREE.Material).dispose(); floorMatte.geometry.dispose(); (floorMatte.material as THREE.Material).dispose(); floorWash.geometry.dispose(); (floorWash.material as THREE.Material).dispose(); floorPulse.geometry.dispose(); (floorPulse.material as THREE.Material).dispose(); floorPools.forEach((pool) => { pool.geometry.dispose(); pool.material.dispose(); }); glowTexture.dispose(); cityGeometry.dispose();
-      [mainScreen, rightScreen, leftScreen, booth, boothTrim].forEach((object) => { object.geometry.dispose(); (object.material as THREE.Material).dispose(); }); podiums.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } }); lasers.traverse((object) => { if (object instanceof THREE.Line) { object.geometry.dispose(); object.material.dispose(); } });
+      [mainScreen, rightScreen, leftScreen, booth, boothTrim].forEach((object) => { object.geometry.dispose(); (object.material as THREE.Material).dispose(); }); podiums.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } }); actors.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } }); lasers.traverse((object) => { if (object instanceof THREE.Line) { object.geometry.dispose(); object.material.dispose(); } });
       rings.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } });
       renderer.dispose(); renderer.domElement.remove();
     };

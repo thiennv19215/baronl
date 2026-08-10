@@ -145,18 +145,6 @@ export const AppConfigSchema = z.object({
     volume: z.number().min(0).max(1).default(1),
     maxQueueDepth: z.number().int().min(1).max(1_000).default(100),
   }),
-  license: z.object({
-    enabled: z.boolean().default(false),
-    serverUrl: SafeHttpsUrlSchema.optional(),
-    productId: z.string().trim().min(1).max(100).optional(),
-    offlineGraceHours: z.number().int().min(0).max(8_760).default(72),
-  }),
-  updater: z.object({
-    enabled: z.boolean().default(false),
-    manifestUrl: SafeHttpsUrlSchema.optional(),
-    requireSignature: z.boolean().default(true),
-    channel: z.enum(['stable', 'beta']).default('stable'),
-  }),
   logging: z.object({
     level: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
     maxFiles: z.number().int().min(1).max(30).default(7),
@@ -184,8 +172,6 @@ export const DEFAULT_APP_CONFIG: AppConfig = AppConfigSchema.parse({
     autoHype: {},
   },
   tts: {},
-  license: {},
-  updater: {},
   logging: {},
 });
 

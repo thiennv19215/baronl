@@ -223,7 +223,7 @@ function App() {
   return <main className={`stage-viewport quality-${quality} ${state.appearance.transparent ? 'transparent' : ''}`}>
     <section className={`stage theme-${state.appearance.theme}`} style={backgroundStyle} aria-label="Sân khấu OrbitStage LIVE">
       {state.appearance.backgroundType === 'video' && backgroundSource && <video className="stage-video" src={backgroundSource} autoPlay muted loop playsInline/>}
-      {state.appearance.threeDEnabled && <ThreeStage quality={quality} live={state.live} musicPlaying={state.music.playing} speaking={Boolean(state.speech)} theme={state.appearance.theme} settings={{ cameraMode: state.appearance.cameraMode, floorBright: state.appearance.floorBright, lasers: state.appearance.lasers, ledScreens: state.appearance.ledScreens, topPodiums: state.appearance.topPodiums }}/>} 
+      {state.appearance.threeDEnabled && <ThreeStage quality={quality} live={state.live} musicPlaying={state.music.playing} speaking={Boolean(state.speech)} theme={state.appearance.theme} command={state.stageCommand?.until && state.stageCommand.until > Date.now() ? state.stageCommand.name : undefined} leaderCount={Math.min(3, leaders.length)} giftActive={Boolean(currentGift && Date.now() - currentGift.createdAt < 7000)} settings={{ cameraMode: state.appearance.cameraMode, floorBright: state.appearance.floorBright, lasers: state.appearance.lasers, ledScreens: state.appearance.ledScreens, topPodiums: state.appearance.topPodiums }}/>} 
       <div className="stage-vignette"/>
       <div className="nebula-cloud cloud-a"/><div className="nebula-cloud cloud-b"/>
       {quality !== 'low' && <StarField quality={quality}/>} 

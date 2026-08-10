@@ -194,6 +194,7 @@ export class LiveRuntime {
   #viewers = new Map<string, ViewerRecord>();
   #wishes = new GiftWishBoard(500);
   #recent = new Map<string, number>();
+  #commandCooldowns = new Map<string, number>();
   #startedAt = Date.now();
   #speechQueueDepth = 0;
 
@@ -296,7 +297,6 @@ export class LiveRuntime {
       speechQueueDepth: this.#speechQueueDepth,
       viewerCount: this.#viewers.size,
       aiWorker: this.#config.ai.enabled ? "ready" : "disabled",
-      license: this.#config.license.enabled ? "enabled" : "free-mode"
     };
   }
 
@@ -575,7 +575,7 @@ export class LiveRuntime {
         const oldest = [...this.#viewers.values()].sort((a, b) => a.lastSeen.localeCompare(b.lastSeen)).slice(0, 250);
         for (const viewer of oldest) this.#viewers.delete(viewer.id);
       }
-      if (event.type === "chat" && event.message?.startsWith("!")) event.command = this.command(event.message, record);
+      if (event.type === "chat") event.command = this.command(event.message ?? "", record);
     }
     this.options.onEvent({ type: "live-event", payload: event });
     this.options.onEvent({ type: "leaderboard", payload: { viewers: this.leaderboard().map((viewer) => this.toStageViewer(viewer)) } });
@@ -588,13 +588,27 @@ export class LiveRuntime {
   }
 
   private command(message: string, viewer: ViewerRecord): { name: string; response: string } | undefined {
-    const command = message.trim().split(/\s+/)[0]?.toLowerCase();
-    if (command === "!level") return { name: "level", response: `${viewer.name} đang ở level ${viewer.level} — ${viewer.title}.` };
-    if (command === "!rank") {
+    const command = message.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/\s+/)[0]?.replace(/^!/, "").toLowerCase();
+    if (!command) return undefined;
+    const now = Date.now();
+    const cooldownKey = `${viewer.id}:${command}`;
+    if (now - (this.#commandCooldowns.get(cooldownKey) ?? 0) < 5_000) return undefined;
+    this.#commandCooldowns.set(cooldownKey, now);
+    if (this.#commandCooldowns.size > 5_000) {
+      for (const [key, timestamp] of this.#commandCooldowns) if (now - timestamp > 60_000) this.#commandCooldowns.delete(key);
+    }
+    if (command === "level") return { name: "level", response: `${viewer.name} đang ở level ${viewer.level} — ${viewer.title}.` };
+    if (command === "rank") {
       const rank = this.leaderboard().findIndex((item) => item.id === viewer.id) + 1;
       return { name: "rank", response: rank > 0 ? `${viewer.name} đang xếp hạng #${rank}.` : `${viewer.name} chưa có thứ hạng.` };
     }
-    if (command === "!wish") return { name: "wish", response: message.replace(/^!wish\s*/i, "").slice(0, 160) || "Chúc mọi người một buổi LIVE thật vui!" };
+    if (command === "wish") return { name: "wish", response: message.replace(/^!?wish\s*/i, "").slice(0, 160) || "Chúc mọi người một buổi LIVE thật vui!" };
+    const stageCommands: Record<string, { name: string; response: string }> = {
+      hey: { name: "hey", response: `Chào ${viewer.name}!` }, quay: { name: "quay", response: "Camera đang lia quanh sân khấu." }, may: { name: "camera", response: `Camera đang focus ${viewer.name}.` },
+      chuc: { name: "wish", response: `Chúc ${viewer.name} một buổi LIVE vui vẻ!` }, nhay: { name: "dance", response: "Sân khấu bắt đầu nhảy!" }, vui: { name: "party", response: "Party mode đã bật!" },
+      tim: { name: "heart", response: "Tim đã thắp sáng sàn nhảy!" }, chao: { name: "hello", response: `Xin chào ${viewer.name}!` },
+    };
+    if (command && stageCommands[command]) return stageCommands[command];
     return undefined;
   }
 

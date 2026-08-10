@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { bridge } from './bridge';
-import { defaultConfig, defaultSnapshot, defaultUpdate, formatUptime, mergeConfig } from './lib/model';
+import { defaultConfig, defaultSnapshot, formatUptime, mergeConfig } from './lib/model';
 import type {
   AppConfig,
   ConfigPatch,
@@ -9,7 +9,6 @@ import type {
   LiveEventType,
   RuntimeSnapshot,
   ScreenId,
-  UpdateSnapshot,
 } from './types';
 
 type IconName =
@@ -32,14 +31,12 @@ type IconName =
   | 'refresh';
 
 const iconPaths: Record<IconName, ReactNode> = {
-  license: <><path d="M6 11V8a6 6 0 0 1 12 0v3"/><rect x="4" y="11" width="16" height="10" rx="3"/><path d="M12 15v2"/></>,
   live: <><circle cx="12" cy="12" r="2"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.2 4.2a11 11 0 0 0 0 15.6M19.8 4.2a11 11 0 0 1 0 15.6"/></>,
   led: <><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 9h2m3 0h2m3 0h1M7 13h10M7 16h6"/></>,
   customize: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.5-1A1.7 1.7 0 0 0 4.3 7l-.1-.1L7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3V3h4v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></>,
   characters: <><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20a6 6 0 0 1 12 0M14 15a5 5 0 0 1 7 4.6"/></>,
   ai: <><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1"/><circle cx="12" cy="12" r="4"/></>,
   test: <><path d="m9 3 1 3-5 9a4 4 0 0 0 3.5 6h7a4 4 0 0 0 3.5-6l-5-9 1-3"/><path d="M8 3h8M8 15h8"/></>,
-  update: <><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></>,
   stage: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m8 16 3-3 2 2 3-4 3 5"/></>,
   copy: <><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
   play: <path d="m8 5 11 7-11 7Z"/>,
@@ -69,8 +66,6 @@ const navItems: { id: ScreenId; label: string; eyebrow: string }[] = [
   { id: 'characters', label: 'Nhân vật', eyebrow: 'Host ảo' },
   { id: 'ai', label: 'AI MC / DJ', eyebrow: 'Tự động' },
   { id: 'test', label: 'Test LIVE', eyebrow: 'Mô phỏng' },
-  { id: 'update', label: 'Cập nhật', eyebrow: 'Hệ thống' },
-  { id: 'license', label: 'License', eyebrow: 'Bản quyền' },
 ];
 
 const screenCopy: Record<ScreenId, { title: string; subtitle: string }> = {
@@ -80,8 +75,6 @@ const screenCopy: Record<ScreenId, { title: string; subtitle: string }> = {
   characters: { title: 'Nhân vật', subtitle: 'Thiết lập MC, DJ và sân khấu hai host.' },
   ai: { title: 'AI MC / DJ', subtitle: 'Provider, persona, auto-hype và hàng đợi giọng nói.' },
   test: { title: 'Test LIVE', subtitle: 'Phát sự kiện giả lập vào cùng pipeline production.' },
-  update: { title: 'Cập nhật & chẩn đoán', subtitle: 'Kiểm tra bản phát hành, backup, rollback và sức khỏe hệ thống.' },
-  license: { title: 'License', subtitle: 'OrbitStage chạy miễn phí khi module license được tắt.' },
 };
 
 function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -117,7 +110,6 @@ function App() {
   const [screen, setScreen] = useState<ScreenId>('live');
   const [config, setConfig] = useState<AppConfig>(defaultConfig);
   const [runtime, setRuntime] = useState<RuntimeSnapshot>(defaultSnapshot);
-  const [update, setUpdate] = useState<UpdateSnapshot>(defaultUpdate);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string>();
   const [toast, setToast] = useState<{ message: string; tone: 'ok' | 'warn' | 'error' }>();
@@ -147,7 +139,6 @@ function App() {
       if (event.type === 'runtime:connection' || event.type === 'connection') setRuntime((current) => ({ ...current, connection: event.payload as RuntimeSnapshot['connection'] }));
       if (event.type === 'config' && event.payload) setConfig((current) => mergeConfig(current, event.payload as ConfigPatch));
       if (event.type === 'music') void bridge.snapshot().then(setRuntime).catch(() => undefined);
-      if (event.type === 'update:status' && event.payload) setUpdate((current) => ({ ...current, ...(event.payload as Partial<UpdateSnapshot>) }));
       if (event.type === 'notification' && typeof event.payload === 'string') notify(event.payload);
     });
     const poll = window.setInterval(() => void bridge.snapshot().then(setRuntime).catch(() => undefined), 5000);
@@ -215,7 +206,7 @@ function App() {
           <strong>{connectionLabel[runtime.connection]}</strong>
           <small>{runtime.tikfinityUrl.replace('ws://', '')}</small>
         </div>
-        <div className="version-row"><span>OrbitStage v{update.currentVersion}</span><span className="free-pill">FREE</span></div>
+        <div className="version-row"><span>OrbitStage Live</span><span className="free-pill">FULL</span></div>
       </div>
     </aside>
 
@@ -237,8 +228,6 @@ function App() {
           {screen === 'characters' && <CharactersScreen config={config} patch={patchConfig} notify={notify}/>} 
           {screen === 'ai' && <AiScreen config={config} patch={patchConfig} notify={notify}/>} 
           {screen === 'test' && <TestScreen notify={notify}/>} 
-          {screen === 'update' && <UpdateScreen config={config} patch={patchConfig} runtime={runtime} update={update} setUpdate={setUpdate} notify={notify} setDialog={setDialog}/>} 
-          {screen === 'license' && <LicenseScreen config={config} patch={patchConfig} notify={notify}/>} 
         </>}
       </div>
     </main>
@@ -569,6 +558,7 @@ function TestScreen({ notify }: { notify: (message: string, tone?: 'ok' | 'warn'
   </div>;
 }
 
+/* Legacy updater and license screens intentionally removed from the product.
 function UpdateScreen({ config, patch, runtime, update, setUpdate, notify, setDialog }: ScreenProps & { runtime: RuntimeSnapshot; update: UpdateSnapshot; setUpdate: (value: UpdateSnapshot | ((current: UpdateSnapshot) => UpdateSnapshot)) => void; notify: (message: string, tone?: 'ok' | 'warn' | 'error') => void; setDialog: (dialog: ConfirmDialog | undefined) => void }) {
   const [health, setHealth] = useState<Record<string, unknown>>(runtime.health ?? {});
   const [feedUrl, setFeedUrl] = useState(config.update.feedUrl ?? '');
@@ -637,5 +627,6 @@ function LicenseScreen({ config, patch, notify }: ScreenProps & { notify: (messa
     </Card>
   </div>;
 }
+*/
 
 export default App;

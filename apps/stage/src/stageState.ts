@@ -221,7 +221,8 @@ export function stageReducer(state: StageState, action: StageAction): StageState
     const message = asString(payload.message ?? payload.comment ?? payload.text).slice(0, 180);
     if (!message) return { ...state, viewers };
     const chat: ChatItem = { id: eventId('chat', timestamp, viewer.id), viewer, message, kind: 'chat', createdAt: timestamp };
-    return { ...state, viewers, chats: addChat(state, chat), leaderboard: calculateLeaderboard(viewers) };
+    const command = isRecord(payload.command) ? asString(payload.command.name).toLowerCase().slice(0, 32) : '';
+    return { ...state, viewers, chats: addChat(state, chat), leaderboard: calculateLeaderboard(viewers), stageCommand: command ? { name: command, until: timestamp + 6_000 } : state.stageCommand };
   }
   if (type === 'follow') {
     const { viewer, viewers } = withViewer(state, payload, 15);

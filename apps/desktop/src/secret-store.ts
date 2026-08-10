@@ -45,9 +45,7 @@ export class SecretStore {
   async status(): Promise<Record<SecretName, boolean>> {
     const document = await this.readDocument();
     return {
-      aiApiKey: Boolean(document.aiApiKey),
-      licenseToken: Boolean(document.licenseToken),
-      updateToken: Boolean(document.updateToken)
+      aiApiKey: Boolean(document.aiApiKey)
     };
   }
 

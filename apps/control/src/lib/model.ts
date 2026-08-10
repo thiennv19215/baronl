@@ -1,7 +1,6 @@
-import type { AppConfig, ConfigPatch, RuntimeSnapshot, UpdateSnapshot } from '../types';
+import type { AppConfig, ConfigPatch, RuntimeSnapshot } from '../types';
 
 export const defaultConfig: AppConfig = {
-  license: { enabled: false, serverUrl: undefined, offlineGraceDays: 7 },
   live: {
     tiktokAccount: '',
     tikfinityUrl: 'ws://127.0.0.1:21213/',
@@ -64,12 +63,6 @@ export const defaultConfig: AppConfig = {
     ttsVoice: 'vi-VN-HoaiMyNeural',
     ttsVolume: 80,
   },
-  update: {
-    enabled: false,
-    feedUrl: undefined,
-    channel: 'stable',
-    automaticCheck: true,
-  },
 };
 
 export const defaultSnapshot: RuntimeSnapshot = {
@@ -84,13 +77,6 @@ export const defaultSnapshot: RuntimeSnapshot = {
   uptimeSeconds: 0,
   music: { title: 'Chưa chọn bản nhạc', playing: false, volume: 70 },
   health: { desktop: 'ok', localServer: 'ok', tikfinity: 'warn', aiWorker: 'ok' },
-};
-
-export const defaultUpdate: UpdateSnapshot = {
-  currentVersion: '0.1.0',
-  status: 'idle',
-  signatureVerified: false,
-  backupReady: false,
 };
 
 export function mergeConfig(current: AppConfig, patch: ConfigPatch): AppConfig {

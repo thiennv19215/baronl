@@ -17,14 +17,12 @@ import { appConfigSchema, publicConfig, type AppConfig, type SecretName } from "
 import { AutoHypeEngine } from "./auto-hype";
 import { ConfigStore } from "./config-store";
 import { createDiagnosticBundle } from "./diagnostics";
-import { LicenseService } from "./license-service";
 import { LiveRuntime, type LiveEvent } from "./live-runtime";
 import { LocalStageServer } from "./local-server";
 import { StructuredLogger } from "./logger";
 import { SecretStore } from "./secret-store";
 import { ServiceSupervisor } from "./service-supervisor";
 import { SpeechService } from "./speech-service";
-import { UpdateService } from "./update-service";
 import { loadWindowState, persistWindowState } from "./window-state";
 
 app.setName("OrbitStage Live");
@@ -48,17 +46,10 @@ let liveRuntime: LiveRuntime;
 let aiService: AiService;
 let speechService: SpeechService;
 let autoHype: AutoHypeEngine;
-let licenseService: LicenseService;
-let updateService: UpdateService;
 let serviceSupervisor: ServiceSupervisor;
 let currentConfig: AppConfig;
 let healthTimer: NodeJS.Timeout | undefined;
 const localApiToken = randomBytes(32).toString("base64url");
-
-function envPublicKey(name: string): string | undefined {
-  const value = process.env[name]?.trim();
-  return value ? value.replaceAll("\\n", "\n") : undefined;
-}
 
 function appPaths() {
   const root = app.getAppPath();
@@ -110,8 +101,7 @@ function flattenedStageEvent(event: LiveEvent): Record<string, unknown> {
 function emitRuntime(event: { type: string; payload?: unknown }): void {
   const controlAliases: Record<string, string> = {
     snapshot: "runtime:snapshot",
-    connection: "runtime:connection",
-    update: "update:status"
+    connection: "runtime:connection"
   };
   sendTo(controlWindow, { ...event, type: controlAliases[event.type] ?? event.type });
   if (!localServer) return;
@@ -416,11 +406,7 @@ function registerIpc(): void {
     autoHype.refresh();
     return publicConfig(currentConfig);
   });
-  handle("live:start", async () => {
-    const license = await licenseService.status();
-    if (!license.active) throw new Error(license.message);
-    liveRuntime.start();
-  });
+  handle("live:start", () => liveRuntime.start());
   handle("live:stop", () => liveRuntime.stop());
   handle("live:fake-event", (_event, payload) => liveRuntime.fake(payload));
   handle("stage:open", async () => {
@@ -447,7 +433,7 @@ function registerIpc(): void {
     await speechService.enqueue(safe, "test");
   });
   handle("secret:set", async (_event, payload) => {
-    const { name, value } = z.object({ name: z.enum(["aiApiKey", "licenseToken", "updateToken"]), value: z.string().max(16_384) }).parse(payload);
+    const { name, value } = z.object({ name: z.literal("aiApiKey"), value: z.string().max(16_384) }).parse(payload);
     await secretStore.set(name as SecretName, value);
     return { saved: Boolean(value) };
   });
@@ -456,7 +442,6 @@ function registerIpc(): void {
     ...liveRuntime.health(),
     localServer: localServer.port ? "ok" : "error",
     websocketClients: localServer.clientCount,
-    update: updateService.snapshot.status,
     supervisor: serviceSupervisor.snapshot()
   }), false);
   handle("diagnostics:export", async () => {
@@ -471,14 +456,6 @@ function registerIpc(): void {
     await fs.copyFile(bundle, save.filePath);
     return save.filePath;
   });
-  handle("license:status", () => licenseService.status());
-  handle("license:activate", (_event, payload) => {
-    const { key } = z.object({ key: z.string().min(1).max(512) }).parse(payload);
-    return licenseService.activate(key);
-  });
-  handle("update:check", () => updateService.check());
-  handle("update:install", () => updateService.installOrPrepare());
-  handle("update:rollback", () => updateService.rollback());
 }
 
 async function bootstrap(): Promise<void> {
@@ -541,21 +518,6 @@ async function bootstrap(): Promise<void> {
     onCaption: (text) => emitRuntime({ type: "ai-caption", payload: { text, source: "auto-hype" } })
   });
   autoHype.refresh();
-  licenseService = new LicenseService({
-    dataDirectory,
-    getConfig: () => currentConfig,
-    secrets: secretStore,
-    logger,
-    appVersion: () => app.getVersion(),
-    publicKey: envPublicKey("ORBITSTAGE_LICENSE_PUBLIC_KEY")
-  });
-  updateService = new UpdateService({
-    dataDirectory,
-    getConfig: () => currentConfig,
-    logger,
-    publicKey: envPublicKey("ORBITSTAGE_UPDATE_PUBLIC_KEY"),
-    onStatus: (status) => emitRuntime({ type: "update", payload: status })
-  });
   serviceSupervisor = new ServiceSupervisor(logger);
   serviceSupervisor.register({
     name: "local-server",
@@ -581,9 +543,6 @@ async function bootstrap(): Promise<void> {
   logger.info("app.ready", { version: app.getVersion(), packaged: app.isPackaged, port: localServer.port });
   healthTimer = setInterval(() => emitRuntime({ type: "health", payload: liveRuntime.health() }), 10_000);
   healthTimer.unref();
-  if (currentConfig.update.enabled && currentConfig.update.automaticCheck && !isE2E) {
-    setTimeout(() => void updateService.check(), 5_000).unref();
-  }
 }
 
 app.on("second-instance", () => {

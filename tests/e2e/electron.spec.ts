@@ -16,8 +16,6 @@ const screens = [
   { navigation: "Nhân vật", heading: "Nhân vật" },
   { navigation: "AI MC / DJ", heading: "AI MC / DJ" },
   { navigation: "Test LIVE", heading: "Test LIVE" },
-  { navigation: "Cập nhật", heading: "Cập nhật & chẩn đoán" },
-  { navigation: "License", heading: "License" },
 ] as const;
 
 let electronApp: ElectronApplication;
@@ -89,7 +87,7 @@ test.describe.serial("OrbitStage Electron", () => {
     if (userDataDirectory) await removeTemporaryProfile(userDataDirectory);
   });
 
-  test("uses the isolated preload bridge and exposes all eight control screens", async ({}, testInfo) => {
+  test("uses the isolated preload bridge and exposes all six control screens", async ({}, testInfo) => {
     const securityState = await controlPage.evaluate(() => ({
       hasBridge: typeof window.orbitStage === "object",
       hasNodeProcess: typeof (globalThis as typeof globalThis & { process?: unknown }).process !== "undefined",
@@ -102,7 +100,7 @@ test.describe.serial("OrbitStage Electron", () => {
       await expect(controlPage.getByRole("heading", { level: 1, name: screen.heading })).toBeVisible();
     }
 
-    await attachPng(testInfo, "control-eight-tabs", controlPage);
+    await attachPng(testInfo, "control-six-tabs", controlPage);
   });
 
   test("opens the real Stage window and renders a fake gift sent through IPC", async ({}, testInfo) => {

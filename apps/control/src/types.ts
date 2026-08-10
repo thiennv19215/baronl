@@ -1,12 +1,10 @@
 export type ScreenId =
-  | 'license'
   | 'live'
   | 'led'
   | 'customize'
   | 'characters'
   | 'ai'
-  | 'test'
-  | 'update';
+  | 'test';
 
 export type ConnectionState = 'offline' | 'connecting' | 'connected' | 'reconnecting' | 'error';
 
@@ -32,12 +30,6 @@ export interface RuntimeSnapshot {
 }
 
 export interface AppConfig {
-  license: {
-    enabled: boolean;
-    key?: string;
-    serverUrl?: string;
-    offlineGraceDays: number;
-  };
   live: {
     tiktokAccount: string;
     tikfinityUrl: string;
@@ -100,12 +92,6 @@ export interface AppConfig {
     ttsVoice: string;
     ttsVolume: number;
   };
-  update: {
-    enabled: boolean;
-    feedUrl?: string;
-    channel: 'stable' | 'beta';
-    automaticCheck: boolean;
-  };
 }
 
 export type ConfigPatch = Partial<{
@@ -125,16 +111,6 @@ export interface FakeLiveEvent {
   giftCount?: number;
   diamonds?: number;
   likeCount?: number;
-}
-
-export interface UpdateSnapshot {
-  currentVersion: string;
-  availableVersion?: string;
-  status: 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'up-to-date' | 'error';
-  progress?: number;
-  message?: string;
-  signatureVerified?: boolean;
-  backupReady?: boolean;
 }
 
 export interface GiftWishRecord {
@@ -163,10 +139,6 @@ export interface OrbitStageFacade {
   testTts?: (text: string) => Promise<unknown>;
   selectAsset?: (kind: 'image' | 'video' | 'audio' | 'model') => Promise<string | undefined>;
   exportDiagnostics?: () => Promise<string | undefined>;
-  checkForUpdates?: () => Promise<UpdateSnapshot | void>;
-  installUpdate?: () => Promise<unknown>;
-  rollbackUpdate?: () => Promise<unknown>;
-  activateLicense?: (key: string) => Promise<{ active: boolean; message?: string }>;
   listWishes?: () => Promise<GiftWishRecord[]>;
   setWishVisible?: (id: string, visible: boolean) => Promise<GiftWishRecord[]>;
   removeWish?: (id: string) => Promise<GiftWishRecord[]>;
