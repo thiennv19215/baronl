@@ -17,6 +17,23 @@ const screens = [
   { navigation: "AI MC / DJ", heading: "AI MC / DJ" },
   { navigation: "Test LIVE", heading: "Test LIVE" },
 ] as const;
+const danceSpriteFrames = [34, 17, 8, 20, 17, 17, 6, 10, 17, 17, 17, 17, 17, 17] as const;
+
+function stableHash(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
+  return hash >>> 0;
+}
+
+function auditViewerIds(): string[] {
+  const ids: string[] = [];
+  for (let sprite = 0; sprite < danceSpriteFrames.length; sprite += 1) {
+    let candidate = 0;
+    while (stableHash(`audit-${candidate}`) % danceSpriteFrames.length !== sprite) candidate += 1;
+    ids.push(`audit-${candidate}`);
+  }
+  return ids;
+}
 
 let electronApp: ElectronApplication;
 let controlPage: Page;
@@ -118,6 +135,39 @@ test.describe.serial("OrbitStage Electron", () => {
       return { characterCenter: character.left + character.width / 2, stageCenter: stage ? stage.left + stage.width / 2 : 0 };
     });
     expect(Math.abs(mcPosition.characterCenter - mcPosition.stageCenter)).toBeLessThan(2);
+
+    await controlPage.getByRole("button", { name: /^Nhân vật/ }).click();
+    await expect(controlPage.locator('.character-art img')).toHaveCount(2);
+    await expect.poll(async () => controlPage.locator('.character-art img').evaluateAll((images) => images.map((image) => ({ src: (image as HTMLImageElement).currentSrc, naturalWidth: (image as HTMLImageElement).naturalWidth })))).toEqual([
+      { src: expect.stringContaining('/project-assets/dual-host/luna/closed.png'), naturalWidth: expect.any(Number) },
+      { src: expect.stringContaining('/project-assets/dual-host/ryan/closed.png'), naturalWidth: expect.any(Number) },
+    ]);
+    expect(await controlPage.locator('.character-art img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
+    await attachPng(testInfo, 'control-character-audit', controlPage);
+    await controlPage.getByRole('button', { name: 'Test chào' }).click();
+    await expect(stagePage.locator('.stage-character.nova')).toHaveClass(/action-greet/);
+    await controlPage.getByRole('button', { name: 'Đặt lại pose' }).click();
+    await expect(stagePage.locator('.stage-character.nova')).not.toHaveClass(/action-greet/);
+
+    for (const [index, id] of auditViewerIds().entries()) {
+      await controlPage.evaluate(async ({ id, index }) => {
+        const bridge = (globalThis as typeof globalThis & { orbitStage: { sendFakeEvent: (event: unknown) => Promise<unknown> } }).orbitStage;
+        await bridge.sendFakeEvent({ type: 'join', viewer: { id, name: `Audit ${index + 1}`, level: index + 1 } });
+      }, { id, index });
+      await expect.poll(async () => stagePage.locator('.floor-actor').evaluateAll((actors) => actors.filter((actor) => actor.querySelector('.floor-actor-name b')?.textContent?.startsWith('Audit ')).length)).toBe(index + 1);
+    }
+    await expect.poll(async () => stagePage.locator('.floor-actor').evaluateAll((actors) => actors.filter((actor) => actor.querySelector('.floor-actor-name b')?.textContent?.startsWith('Audit ')).length)).toBe(14);
+    const spriteAudit = await stagePage.locator('.floor-actor').evaluateAll((actors) => actors.filter((actor) => actor.querySelector('.floor-actor-name b')?.textContent?.startsWith('Audit ')).map((actor) => {
+      const sprite = actor.querySelector<HTMLElement>('.floor-actor-sprite');
+      const file = sprite?.style.backgroundImage.match(/char-(\d{2})-sheet\.png/)?.[1];
+      return { file: Number(file), backgroundSize: sprite?.style.backgroundSize, spriteTravel: sprite?.style.getPropertyValue('--sprite-travel'), spriteCount: actor.querySelectorAll('.floor-actor-sprite').length };
+    }));
+    expect(new Set(spriteAudit.map((item) => item.file)).size).toBe(14);
+    spriteAudit.forEach((item) => {
+      expect(item.spriteCount).toBe(1);
+      expect(item.backgroundSize).toBe('auto 100%');
+      expect(item.spriteTravel).toBe(`${danceSpriteFrames[item.file - 1] * 14}cqw`);
+    });
 
     await controlPage.getByRole("button", { name: /^Test LIVE/ }).click();
     await expect(controlPage.getByRole("heading", { level: 1, name: "Test LIVE" })).toBeVisible();

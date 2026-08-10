@@ -194,6 +194,7 @@ function safeMediaSource(source: string): string | undefined {
 
 function App() {
   const [audioEnergy, setAudioEnergy] = useState(0);
+  const [hostsSwapped, setHostsSwapped] = useState(false);
   const [state, dispatch] = useReducer(stageReducer, initialStageState, (initial) => {
     const quality = requestedQuality === 'low' || requestedQuality === 'high' || requestedQuality === 'balanced' ? requestedQuality : initial.appearance.effectQuality;
     return { ...initial, appearance: { ...initial.appearance, transparent: forceTransparent || initial.appearance.transparent, effectQuality: quality } };
@@ -206,6 +207,12 @@ function App() {
     const timer = window.setInterval(() => dispatch({ type: 'expire', now: Date.now() }), 1000);
     return () => window.clearInterval(timer);
   }, []);
+  useEffect(() => {
+    setHostsSwapped(false);
+    if (!state.characters.shuffle) return;
+    const timer = window.setInterval(() => setHostsSwapped((current) => !current), 600_000);
+    return () => window.clearInterval(timer);
+  }, [state.characters.shuffle]);
 
   const leaders = useMemo(() => state.leaderboard.map((id) => state.viewers[id]).filter(Boolean), [state.leaderboard, state.viewers]);
   const currentGift = state.gifts[state.gifts.length - 1];
@@ -251,9 +258,9 @@ function App() {
       {currentGift && <GiftCelebration gift={currentGift} showWish={state.appearance.showWishes} onDismissWish={dismissWish}/>}
       {state.levelUp && <LevelUpCelebration levelUp={state.levelUp}/>}
 
-        {state.characters.enabled && <div className={`hosts ${state.characters.dualHost ? 'dual' : 'single'}`}>
-          <Character name={state.characters.hostA} role="MC" variant="nova" speaking={state.speech?.host === 'a'} blink={state.characters.blink}/>
-          {state.characters.dualHost && <Character name={state.characters.hostB} role="DJ" variant="echo" speaking={state.speech?.host === 'b'} blink={state.characters.blink}/>} 
+        {state.characters.enabled && <div className={`hosts ${state.characters.dualHost ? 'dual' : 'single'} ${hostsSwapped ? 'swapped' : ''}`}>
+          <Character name={state.characters.hostA} role="MC" variant="nova" speaking={state.characters.lipSync && state.speech?.host === 'a'} blink={state.characters.blink} action={state.characterAction?.name}/>
+          {state.characters.dualHost && <Character name={state.characters.hostB} role="DJ" variant="echo" speaking={state.characters.lipSync && state.speech?.host === 'b'} blink={state.characters.blink} action={state.characterAction?.name}/>} 
         </div>}
 
         {state.appearance.showChat && <ChatStack items={state.chats} avatarStyle={state.appearance.avatarStyle}/>} 
@@ -423,7 +430,7 @@ function DanceFloorActors({ viewers, command, spotlightViewerId, settings }: { v
     const columns = settings.autoFitCrowd ? Math.max(3, Math.min(8, Math.ceil(Math.sqrt(Math.max(1, count) * 1.35)))) : 5;
     const rows = Math.max(1, Math.ceil(count / columns));
     const density = settings.autoFitCrowd ? count <= 10 ? 1.1 : count <= 24 ? .92 : count <= 40 ? .76 : .64 : 1;
-    const vipRanks = new Map(ranked.slice(0, 3).map((viewer, index) => [viewer.id, index + 1]));
+    const vipRanks = new Map(ranked.filter((viewer) => viewer.gifts > 0 || viewer.points > 0 || viewer.likes > 0).slice(0, 3).map((viewer, index) => [viewer.id, index + 1]));
     return selected.map((viewer, index) => {
     const hash = stableHash(viewer.id);
     const spriteIndex = hash % danceSprites.length;
@@ -433,10 +440,11 @@ function DanceFloorActors({ viewers, command, spotlightViewerId, settings }: { v
     const centeredColumn = column + (columns - rowCount) / 2;
     const jitterX = settings.autoFitCrowd ? (((hash >>> 8) % 7) - 3) * Math.max(.35, 1 - count / 80) : ((hash >>> 8) % 13) - 6;
     const jitterY = settings.autoFitCrowd ? (((hash >>> 16) % 5) - 2) * .6 : ((hash >>> 16) % 7) - 3;
-    const left = columns === 1 ? 50 : 5 + centeredColumn * (90 / Math.max(1, columns - 1)) + jitterX;
-    const top = rows === 1 ? 48 : 6 + row * (86 / Math.max(1, rows - 1)) + jitterY;
+    const left = columns === 1 ? 50 : 10 + centeredColumn * (80 / Math.max(1, columns - 1)) + jitterX;
+    const top = rows === 1 ? 48 : 18 + row * (64 / Math.max(1, rows - 1)) + jitterY;
     const vipRank = vipRanks.get(viewer.id);
-    return { viewer, frames: danceSprites[spriteIndex] ?? 17, sprite: spriteIndex + 1, vipRank, left: Math.max(3, Math.min(97, left)), top: Math.max(3, Math.min(92, top)), delay: -((hash % 1400) / 1000), density, wanderX: ((((hash >>> 3) % 9) - 4) * .42 * density), wanderY: ((((hash >>> 12) % 5) + 1) * .24 * density), wanderDuration: 4.8 + (hash % 32) / 10 };
+    const horizontalInset = vipRank ? 13 : 9;
+    return { viewer, frames: danceSprites[spriteIndex] ?? 17, sprite: spriteIndex + 1, vipRank, left: Math.max(horizontalInset, Math.min(100 - horizontalInset, left)), top: Math.max(14, Math.min(84, top)), delay: -((hash % 1400) / 1000), density, wanderX: ((((hash >>> 3) % 9) - 4) * .42 * density), wanderY: ((((hash >>> 12) % 5) + 1) * .24 * density), wanderDuration: 4.8 + (hash % 32) / 10 };
     });
   }, [settings.autoFitCrowd, settings.maxFloorActors, viewers]);
   const edge = (100 - settings.floorWidth) / 2;
@@ -444,7 +452,7 @@ function DanceFloorActors({ viewers, command, spotlightViewerId, settings }: { v
     {actors.map(({ viewer, frames, sprite, vipRank, left, top, delay, density, wanderX, wanderY, wanderDuration }) => {
       const style = { left: `${left}%`, top: `${top}%`, zIndex: Math.round(top), '--actor-scale': (.66 + (top / 100) * .58) * density, '--actor-delay': `${delay}s`, '--wander-x': `${wanderX}cqw`, '--wander-y': `${wanderY}cqw`, '--wander-duration': `${wanderDuration}s` } as React.CSSProperties;
       const spriteFile = `char-${String(sprite).padStart(2, '0')}-sheet.png`;
-      const spriteStyle = { backgroundImage: `url("${projectAssetRoot}/avatars/dance/${spriteFile}")`, backgroundSize: `${frames * 100}% 100%`, animationTimingFunction: `steps(${frames})` } as React.CSSProperties;
+      const spriteStyle = { backgroundImage: `url("${projectAssetRoot}/avatars/dance/${spriteFile}")`, backgroundSize: 'auto 100%', animationTimingFunction: `steps(${frames})`, '--sprite-travel': `${frames * 14}cqw` } as React.CSSProperties;
       const wingFile = vipRank ? `top${vipRank}.png` : viewer.level >= 25 ? 'canh3.png' : undefined;
       const wingStyle = wingFile ? { backgroundImage: `url("${projectAssetRoot}/fx/dance/${wingFile}")` } : undefined;
       const motion = viewer.motionUntil && viewer.motionUntil > Date.now() ? viewer.motion : undefined;
@@ -492,10 +500,10 @@ function LevelUpCelebration({ levelUp }: { levelUp: NonNullable<StageState['leve
   return <div className="level-up-celebration"><div className="level-up-rays">{Array.from({ length: 10 }, (_, index) => <i key={index}/>)}</div><img src={cultivationBadgeSource(levelUp.viewer.level)} alt=""/><p><small>ĐỘT PHÁ CẢNH GIỚI</small><strong>{levelUp.viewer.name}</strong><b>LV.{levelUp.previousLevel} → LV.{levelUp.viewer.level}</b><span>{levelUp.viewer.badge}</span></p></div>;
 }
 
-function Character({ name, role, variant, speaking, blink }: { name: string; role: string; variant: 'nova' | 'echo'; speaking: boolean; blink: boolean }) {
+function Character({ name, role, variant, speaking, blink, action }: { name: string; role: string; variant: 'nova' | 'echo'; speaking: boolean; blink: boolean; action?: 'greet' }) {
   const host = variant === 'nova' ? 'luna' : 'ryan';
   const state = speaking ? 'open' : 'closed';
-  return <div className={`stage-character art-host ${variant} ${speaking ? 'speaking' : ''} ${blink ? 'blink-enabled' : ''}`}>
+  return <div className={`stage-character art-host ${variant} ${speaking ? 'speaking' : ''} ${blink ? 'blink-enabled' : ''} ${action ? `action-${action}` : ''}`}>
     <div className="character-aura"><i/><i/></div>{variant === 'nova' ? <Live2DHost assetRoot={projectAssetRoot} speaking={speaking} blink={blink} fallbackSource={`${projectAssetRoot}/dual-host/luna/${state}.png`}/> : <><img className="host-art base-art" src={`${projectAssetRoot}/dual-host/${host}/${state}.png`} alt=""/>{blink && <img className="host-art blink-art" src={`${projectAssetRoot}/dual-host/${host}/blink.png`} alt=""/>}</>}<div className="host-name"><small>{role}</small><strong>{name}</strong><i/></div>
   </div>;
 }

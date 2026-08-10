@@ -158,4 +158,5 @@ export interface OrbitStageFacade {
   listWishes?: () => Promise<GiftWishRecord[]>;
   setWishVisible?: (id: string, visible: boolean) => Promise<GiftWishRecord[]>;
   removeWish?: (id: string) => Promise<GiftWishRecord[]>;
+  characterAction?: (action: 'greet' | 'reset') => Promise<unknown>;
 }

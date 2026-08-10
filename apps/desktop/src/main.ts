@@ -171,7 +171,7 @@ function configureSessionSecurity(): void {
           "connect-src 'self'",
           "font-src 'self' data:",
           "frame-ancestors 'none'",
-          "img-src 'self' data: blob:",
+          "img-src 'self' data: blob: http://127.0.0.1:*",
           "media-src 'self' data: blob:",
           "object-src 'none'",
           "script-src 'self'",
@@ -416,6 +416,12 @@ function registerIpc(): void {
   handle("stage:open", async () => {
     await createStageWindow();
     return { opened: true };
+  });
+  handle("character:action", async (_event, payload) => {
+    const { action } = z.object({ action: z.enum(["greet", "reset"]) }).parse(payload);
+    await createStageWindow();
+    emitRuntime({ type: "character_action", payload: { action, timestamp: Date.now() } });
+    return { action };
   });
   handle("music:control", (_event, payload) => {
     const parsed = z.object({ action: z.enum(["play", "pause", "next", "previous", "stop", "volume"]), value: z.number().min(0).max(100).optional() }).parse(payload);

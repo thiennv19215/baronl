@@ -42,6 +42,7 @@ export const initialStageState: StageState = {
     hostB: 'Ryan',
     lipSync: true,
     blink: true,
+    shuffle: false,
   },
   viewers: {},
   leaderboard: [],
@@ -155,6 +156,7 @@ export function stageReducer(state: StageState, action: StageAction): StageState
       aiCaption: state.aiCaption?.until && state.aiCaption.until <= action.now ? undefined : state.aiCaption,
       levelUp: state.levelUp?.until && state.levelUp.until <= action.now ? undefined : state.levelUp,
       eventFx: state.eventFx?.until && state.eventFx.until <= action.now ? undefined : state.eventFx,
+      characterAction: state.characterAction && state.characterAction.until <= action.now ? undefined : state.characterAction,
     };
   }
 
@@ -206,6 +208,11 @@ export function stageReducer(state: StageState, action: StageAction): StageState
   if (type === 'ai_caption') return { ...state, aiCaption: { text: asString(payload.text ?? payload.message).slice(0, 220), source: asString(payload.source ?? payload.role), until: timestamp + Math.max(2_000, asNumber(payload.durationMs, 9_000)) } };
   if (type === 'tts_audio') return { ...state, aiCaption: asString(payload.text) ? { text: asString(payload.text).slice(0, 220), source: asString(payload.source, 'AI MC'), until: timestamp + Math.max(2_000, asNumber(payload.durationMs, 9_000)) } : state.aiCaption };
   if (type === 'audio_owner') return { ...state, audioOwner: payload.owner === true || payload.owner === 'stage' || payload.stage === true };
+  if (type === 'character_action') {
+    if (payload.action === 'reset') return { ...state, characterAction: undefined, speech: undefined };
+    if (payload.action === 'greet') return { ...state, characterAction: { name: 'greet', until: timestamp + 2_600 } };
+    return state;
+  }
   if (type === 'viewer_level_up') {
     const viewerPayload = isRecord(payload.viewer) ? payload.viewer : payload;
     const viewer = viewerFrom(viewerPayload, state.viewers[safeId(asString(viewerPayload.id ?? viewerPayload.uniqueId ?? viewerPayload.name))]);

@@ -40,6 +40,14 @@ describe('stage event reducer', () => {
     expect(expired.gifts).toHaveLength(0);
   });
 
+  it('runs and resets real character actions', () => {
+    const greeting = stageReducer(initialStageState, { type: 'event', event: { type: 'character_action', timestamp: 1_000, payload: { action: 'greet' } } });
+    expect(greeting.characterAction).toEqual({ name: 'greet', until: 3_600 });
+    const reset = stageReducer({ ...greeting, speech: { host: 'a', until: 5_000 } }, { type: 'event', event: { type: 'character_action', timestamp: 1_100, payload: { action: 'reset' } } });
+    expect(reset.characterAction).toBeUndefined();
+    expect(reset.speech).toBeUndefined();
+  });
+
   it('renders and expires cultivation breakthroughs and crowd effects', () => {
     const leveled = stageReducer(initialStageState, { type: 'event', event: { type: 'viewer-level-up', timestamp: 1_000, payload: { viewer: { id: 'dao', name: 'Đạo Hữu', level: 30, badge: 'Kim Đan' }, previousLevel: 29, level: 30, title: 'Kim Đan' } } });
     expect(leveled.levelUp).toMatchObject({ previousLevel: 29, viewer: { id: 'dao', level: 30, badge: 'Kim Đan' }, until: 8_000 });

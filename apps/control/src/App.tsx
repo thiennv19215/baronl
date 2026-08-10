@@ -225,7 +225,7 @@ function App() {
           {screen === 'live' && <LiveScreen config={config} runtime={runtime} patch={patchConfig} notify={notify}/>} 
           {screen === 'led' && <LedScreen config={config} patch={patchConfig}/>} 
           {screen === 'customize' && <CustomizeScreen config={config} patch={patchConfig} notify={notify}/>} 
-          {screen === 'characters' && <CharactersScreen config={config} patch={patchConfig} notify={notify}/>} 
+          {screen === 'characters' && <CharactersScreen config={config} runtime={runtime} patch={patchConfig} notify={notify}/>} 
           {screen === 'ai' && <AiScreen config={config} patch={patchConfig} notify={notify}/>} 
           {screen === 'test' && <TestScreen notify={notify}/>} 
         </>}
@@ -448,30 +448,31 @@ function CustomizeScreen({ config, patch, notify }: ScreenProps & { notify: (mes
   </div>;
 }
 
-function CharactersScreen({ config, patch, notify }: ScreenProps & { notify: (message: string, tone?: 'ok' | 'warn' | 'error') => void }) {
+function CharactersScreen({ config, runtime, patch, notify }: ScreenProps & { runtime: RuntimeSnapshot; notify: (message: string, tone?: 'ok' | 'warn' | 'error') => void }) {
   const characters = config.characters;
-  const selectModel = async () => {
-    const source = await bridge.selectAsset('model');
-    notify(source ? `Đã thêm model: ${source.split(/[\\/]/).pop()}` : 'Chưa chọn model.', source ? 'ok' : 'warn');
+  const characterAssetRoot = `http://127.0.0.1:${runtime.localPort}/project-assets`;
+  const runAction = async (action: 'greet' | 'reset') => {
+    await bridge.characterAction(action);
+    notify(action === 'greet' ? 'MC/DJ đang chào khán giả trên Stage.' : 'Đã đặt lại pose MC/DJ.', 'ok');
   };
   return <div className="screen-grid character-grid">
     <Card className="character-showcase span-2">
-      <div className="showcase-copy"><span className="eyebrow">DUAL HOST STUDIO</span><h2>Hai cá tính, một sân khấu.</h2><p>Fallback SVG/CSS luôn sẵn sàng khi model Live2D hoặc GPU không khả dụng.</p><div className="host-status"><span><StatusDot state="ok"/>{characters.hostA}</span><span><StatusDot state={characters.dualHost ? 'ok' : 'warn'}/>{characters.hostB}</span></div></div>
-      <div className="character-art"><div className="host-figure nova"><div className="host-hair"/><div className="host-face"><i/><i/><b/></div><div className="host-body"/><span>{characters.hostA || 'Nova'} · MC</span></div><div className={`host-figure echo ${characters.dualHost ? '' : 'muted'}`}><div className="host-hair"/><div className="host-face"><i/><i/><b/></div><div className="host-body"/><span>{characters.hostB || 'Echo'} · DJ</span></div></div>
+      <div className="showcase-copy"><span className="eyebrow">DUAL HOST STUDIO</span><h2>Hai cá tính, một sân khấu.</h2><p>Preview dùng đúng hình Luna Live2D và Ryan đang xuất hiện trên Stage.</p><div className="host-status"><span><StatusDot state="ok"/>{characters.hostA}</span><span><StatusDot state={characters.dualHost ? 'ok' : 'warn'}/>{characters.hostB}</span></div></div>
+      <div className="character-art"><div className="host-figure nova"><img src={`${characterAssetRoot}/dual-host/luna/closed.png`} alt={`MC ${characters.hostA || 'Luna'}`}/><span>{characters.hostA || 'Luna'} · MC</span></div><div className={`host-figure echo ${characters.dualHost ? '' : 'muted'}`}><img src={`${characterAssetRoot}/dual-host/ryan/closed.png`} alt={`DJ ${characters.hostB || 'Ryan'}`}/><span>{characters.hostB || 'Ryan'} · DJ</span></div></div>
     </Card>
     <Card>
       <CardTitle title="Đội hình" hint="Tên hiển thị không phụ thuộc tên file model."/>
       <div className="form-grid"><Field label="Host A"><input value={characters.hostA} onChange={(e) => void patch('characters', { hostA: e.target.value })}/></Field><Field label="Host B"><input value={characters.hostB} disabled={!characters.dualHost} onChange={(e) => void patch('characters', { hostB: e.target.value })}/></Field></div>
       <Toggle checked={characters.enabled} onChange={(enabled) => void patch('characters', { enabled })} label="Hiển thị nhân vật" description="Ẩn host, giữ UI stage và audio."/>
-      <Toggle checked={characters.dualHost} onChange={(dualHost) => void patch('characters', { dualHost })} label="Chế độ hai host" description="MC và DJ đứng hai bên sân khấu."/>
-      <button className="asset-drop compact" onClick={() => void selectModel()}><Icon name="folder" size={20}/><span><strong>Thêm model đã cấp quyền</strong><small>Live2D JSON/MOC3 hoặc GLB</small></span></button>
+      <Toggle checked={characters.dualHost} onChange={(dualHost) => void patch('characters', { dualHost })} label="Chế độ hai host" description="MC ở bục chính, DJ ở khu bàn DJ."/>
+      <div className="asset-drop compact model-runtime-status"><Icon name="check" size={20}/><span><strong>Model Stage đang hoạt động</strong><small>Luna · Cubism Live2D / Ryan · PNG animation</small></span></div>
     </Card>
     <Card>
       <CardTitle title="Chuyển động" hint="Tự giảm chất lượng khi GPU yếu."/>
       <Toggle checked={characters.lipSync} onChange={(lipSync) => void patch('characters', { lipSync })} label="Lip sync" description="Theo amplitude của TTS/music input."/>
       <Toggle checked={characters.blink} onChange={(blink) => void patch('characters', { blink })} label="Chớp mắt tự nhiên" description="Chu kỳ ngẫu nhiên, giảm cảm giác lặp."/>
       <Toggle checked={characters.shuffle} onChange={(shuffle) => void patch('characters', { shuffle })} label="Đổi vị trí theo lượt" description="Hoán đổi MC/DJ sau mỗi 10 phút."/>
-      <div className="motion-row"><button className="button secondary" onClick={() => notify('Đã phát motion chào khán giả.')}><Icon name="sparkles" size={17}/>Test chào</button><button className="button subtle" onClick={() => notify('Đã đặt lại pose trung tâm.')}>Đặt lại pose</button></div>
+      <div className="motion-row"><button className="button secondary" onClick={() => void runAction('greet')}><Icon name="sparkles" size={17}/>Test chào</button><button className="button subtle" onClick={() => void runAction('reset')}>Đặt lại pose</button></div>
     </Card>
   </div>;
 }

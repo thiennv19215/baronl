@@ -72,7 +72,7 @@ export interface StageState {
   viewerCount: number;
   led: { enabled: boolean; text: string; speed: number; color: string; glowColor: string; style: 'marquee' | 'pulse' | 'static' };
   appearance: StageAppearance;
-  characters: { enabled: boolean; dualHost: boolean; hostA: string; hostB: string; lipSync: boolean; blink: boolean };
+  characters: { enabled: boolean; dualHost: boolean; hostA: string; hostB: string; lipSync: boolean; blink: boolean; shuffle: boolean };
   viewers: Record<string, StageViewer>;
   leaderboard: string[];
   chats: ChatItem[];
@@ -86,6 +86,7 @@ export interface StageState {
   levelUp?: { viewer: StageViewer; previousLevel: number; until: number };
   eventFx?: { type: 'hearts' | 'fireworks' | 'spotlight'; viewerId?: string; intensity: number; until: number };
   stageCommand?: { name: string; viewerId?: string; until: number };
+  characterAction?: { name: 'greet'; until: number };
   audioOwner?: boolean;
 }
 

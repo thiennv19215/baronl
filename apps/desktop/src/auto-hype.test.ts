@@ -10,9 +10,9 @@ afterEach(() => vi.useRealTimers());
 
 function harness(overrides: Partial<AppConfig['ai']> = {}) {
   const config: AppConfig = { ...DEFAULT_CONFIG, ai: { ...DEFAULT_CONFIG.ai, enabled: true, autoHype: false, liveTime: false, joinBatchSeconds: 2, ...overrides } };
-  const generate = vi.fn(async () => ({ text: 'Xin chào cả nhà!', latencyMs: 3 }));
-  const enqueue = vi.fn(async () => undefined);
-  const onCaption = vi.fn();
+  const generate = vi.fn<(prompt: string) => Promise<{ text: string; latencyMs: number }>>(async () => ({ text: 'Xin chào cả nhà!', latencyMs: 3 }));
+  const enqueue = vi.fn<(text: string, source: 'mc' | 'dj' | 'test') => Promise<void>>(async () => undefined);
+  const onCaption = vi.fn<(text: string, source: 'AI MC' | 'AI DJ') => void>();
   const engine = new AutoHypeEngine({
     getConfig: () => config,
     ai: { generate } as unknown as AiService,

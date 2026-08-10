@@ -246,6 +246,7 @@ export class LocalStageServer {
 
     const projectAssetRequest = url.pathname.startsWith("/project-assets/");
     const userAssetRequest = url.pathname.startsWith("/user-assets/");
+    if (projectAssetRequest) response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     const assetRequest = projectAssetRequest || userAssetRequest;
     const root = projectAssetRequest ? this.options.assetRoot : userAssetRequest ? this.options.userAssetRoot : this.options.stageRoot;
     let relative = projectAssetRequest

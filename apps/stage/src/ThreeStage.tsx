@@ -294,7 +294,9 @@ export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking,
       });
       mainScreen.visible = rightScreen.visible = leftScreen.visible = stageSettings.ledScreens;
       podiums.visible = stageSettings.topPodiums;
-      actors.visible = stageSettings.topPodiums;
+      // The real viewer sprites are rendered by DanceFloorActors. Keep the
+      // podium geometry, but never mix the old capsule placeholders into it.
+      actors.visible = false;
       actors.children.forEach((actor, index) => {
         actor.visible = index < leaderCountRef.current;
         actor.position.y = Number(actor.userData.baseY) + Math.sin(elapsed * 1.8 + index) * .07;
