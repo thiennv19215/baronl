@@ -79,10 +79,12 @@ export interface StageState {
   gifts: GiftEffect[];
   wishes: GiftWishItem[];
   spotlightViewer?: StageViewer;
-  music: { title: string; artist?: string; playing: boolean; volume: number; source?: string };
+  music: { title: string; artist?: string; playing: boolean; volume: number; source?: string; crossfadeSeconds?: number; beatSensitivity?: number; currentTrackId?: string | null; playlist?: Array<{ id: string; title: string; path: string }> };
   sessionLikes: number;
   speech?: { host: 'a' | 'b'; text?: string; until?: number };
   aiCaption?: { text: string; source?: string; until: number };
+  levelUp?: { viewer: StageViewer; previousLevel: number; until: number };
+  eventFx?: { type: 'hearts' | 'fireworks' | 'spotlight'; viewerId?: string; intensity: number; until: number };
   stageCommand?: { name: string; viewerId?: string; until: number };
   audioOwner?: boolean;
 }

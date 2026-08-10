@@ -16,6 +16,7 @@ const INVOKE_CHANNELS = new Set([
   "wish:set-visible",
   "wish:remove",
   "music:control",
+  "music:ended",
   "asset:select",
   "ai:test",
   "tts:test",

@@ -40,6 +40,16 @@ describe('stage event reducer', () => {
     expect(expired.gifts).toHaveLength(0);
   });
 
+  it('renders and expires cultivation breakthroughs and crowd effects', () => {
+    const leveled = stageReducer(initialStageState, { type: 'event', event: { type: 'viewer-level-up', timestamp: 1_000, payload: { viewer: { id: 'dao', name: 'Đạo Hữu', level: 30, badge: 'Kim Đan' }, previousLevel: 29, level: 30, title: 'Kim Đan' } } });
+    expect(leveled.levelUp).toMatchObject({ previousLevel: 29, viewer: { id: 'dao', level: 30, badge: 'Kim Đan' }, until: 8_000 });
+    const liked = stageReducer(leveled, { type: 'event', event: { type: 'like', timestamp: 2_000, payload: { userId: 'dao', nickname: 'Đạo Hữu', count: 100 } } });
+    expect(liked.eventFx).toMatchObject({ type: 'hearts', viewerId: 'dao' });
+    const expired = stageReducer(liked, { type: 'expire', now: 9_001 });
+    expect(expired.levelUp).toBeUndefined();
+    expect(expired.eventFx).toBeUndefined();
+  });
+
   it('uses explicit websocket query before local default', () => {
     expect(getWebSocketUrl({ protocol: 'http:', hostname: 'localhost', port: '5174', search: '?ws=ws%3A%2F%2F127.0.0.1%3A17321%2Fevents' } as Location)).toBe('ws://127.0.0.1:17321/events');
   });

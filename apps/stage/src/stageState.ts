@@ -38,8 +38,8 @@ export const initialStageState: StageState = {
   characters: {
     enabled: true,
     dualHost: true,
-    hostA: 'Nova',
-    hostB: 'Echo',
+    hostA: 'Luna',
+    hostB: 'Ryan',
     lipSync: true,
     blink: true,
   },
@@ -48,7 +48,7 @@ export const initialStageState: StageState = {
   chats: [],
   gifts: [],
   wishes: [],
-  music: { title: 'Cosmic Bloom', artist: 'OrbitStage library', playing: false, volume: 70 },
+  music: { title: 'Cosmic Bloom', artist: 'OrbitStage library', playing: false, volume: 70, crossfadeSeconds: 1.5, beatSensitivity: 1.4, playlist: [] },
   sessionLikes: 0,
 };
 
@@ -74,7 +74,7 @@ export function normalizeEnvelope(envelope: StageEventEnvelope): { type: string;
     disconnect: 'disconnected', connection_lost: 'disconnected', stage_config: 'config', config_update: 'config',
     song: 'music', music_update: 'music', room_user: 'viewer_count', roomuser: 'viewer_count',
     tts_start: 'speech_start', speech_started: 'speech_start', tts_end: 'speech_end', speech_ended: 'speech_end',
-    'tts-audio': 'tts_audio', 'ai-caption': 'ai_caption', audio_ownership: 'audio_owner',
+    'tts-audio': 'tts_audio', 'ai-caption': 'ai_caption', 'viewer-level-up': 'viewer_level_up', audio_ownership: 'audio_owner',
   };
   return { type: aliases[rawType] ?? rawType, payload, timestamp: asNumber(wrapper.timestamp ?? payload.timestamp, Date.now()) };
 }
@@ -129,7 +129,7 @@ function applyConfig(state: StageState, payload: UnknownRecord): StageState {
     appearance: { ...state.appearance, ...(stageConfig as Partial<StageState['appearance']>) },
     led: ledConfig ? { ...state.led, ...(ledConfig as Partial<StageState['led']>) } : state.led,
     characters: characterConfig ? { ...state.characters, ...(characterConfig as Partial<StageState['characters']>) } : state.characters,
-    music: musicConfig ? { ...state.music, playing: Boolean(musicConfig.playing), volume: Math.max(0, Math.min(100, asNumber(musicConfig.volume, state.music.volume))), title: asString(selectedTrack?.title, state.music.title), source: asString(selectedTrack?.path, state.music.source) } : state.music,
+    music: musicConfig ? { ...state.music, playing: Boolean(musicConfig.playing), volume: Math.max(0, Math.min(100, asNumber(musicConfig.volume, state.music.volume))), title: asString(selectedTrack?.title, state.music.title), source: asString(selectedTrack?.path, state.music.source), currentTrackId: asString(musicConfig.currentTrackId) || null, playlist: playlist.map((track) => ({ id: asString(track.id), title: asString(track.title), path: asString(track.path) })).filter((track) => track.id && track.path), crossfadeSeconds: Math.max(0, Math.min(8, asNumber(musicConfig.crossfadeSeconds, state.music.crossfadeSeconds))), beatSensitivity: Math.max(.5, Math.min(3, asNumber(musicConfig.beatSensitivity, state.music.beatSensitivity))) } : state.music,
   };
 }
 
@@ -153,6 +153,8 @@ export function stageReducer(state: StageState, action: StageAction): StageState
       spotlightViewer: state.gifts.some((gift) => action.now - gift.createdAt < 7_000) ? state.spotlightViewer : undefined,
       speech: state.speech?.until && state.speech.until <= action.now ? undefined : state.speech,
       aiCaption: state.aiCaption?.until && state.aiCaption.until <= action.now ? undefined : state.aiCaption,
+      levelUp: state.levelUp?.until && state.levelUp.until <= action.now ? undefined : state.levelUp,
+      eventFx: state.eventFx?.until && state.eventFx.until <= action.now ? undefined : state.eventFx,
     };
   }
 
@@ -204,6 +206,13 @@ export function stageReducer(state: StageState, action: StageAction): StageState
   if (type === 'ai_caption') return { ...state, aiCaption: { text: asString(payload.text ?? payload.message).slice(0, 220), source: asString(payload.source ?? payload.role), until: timestamp + Math.max(2_000, asNumber(payload.durationMs, 9_000)) } };
   if (type === 'tts_audio') return { ...state, aiCaption: asString(payload.text) ? { text: asString(payload.text).slice(0, 220), source: asString(payload.source, 'AI MC'), until: timestamp + Math.max(2_000, asNumber(payload.durationMs, 9_000)) } : state.aiCaption };
   if (type === 'audio_owner') return { ...state, audioOwner: payload.owner === true || payload.owner === 'stage' || payload.stage === true };
+  if (type === 'viewer_level_up') {
+    const viewerPayload = isRecord(payload.viewer) ? payload.viewer : payload;
+    const viewer = viewerFrom(viewerPayload, state.viewers[safeId(asString(viewerPayload.id ?? viewerPayload.uniqueId ?? viewerPayload.name))]);
+    viewer.level = Math.max(viewer.level, asNumber(payload.level, viewer.level));
+    viewer.badge = asString(payload.title, viewer.badge);
+    return { ...state, viewers: { ...state.viewers, [viewer.id]: viewer }, spotlightViewer: viewer, levelUp: { viewer, previousLevel: asNumber(payload.previousLevel, Math.max(1, viewer.level - 1)), until: timestamp + 7_000 } };
+  }
   if (type === 'leaderboard') {
     const list = Array.isArray(payload.viewers) ? payload.viewers : Array.isArray(payload.items) ? payload.items : [];
     let viewers = { ...state.viewers };
@@ -237,13 +246,13 @@ export function stageReducer(state: StageState, action: StageAction): StageState
     const { viewer, viewers } = withViewer(state, payload, 15);
     viewer.motion = 'cheer'; viewer.motionUntil = timestamp + 4_500;
     const chat: ChatItem = { id: eventId('follow', timestamp, viewer.id), viewer, message: 'đã theo dõi kênh', kind: 'follow', createdAt: timestamp };
-    return { ...state, viewers, chats: addChat(state, chat), spotlightViewer: viewer, leaderboard: calculateLeaderboard(viewers) };
+    return { ...state, viewers, chats: addChat(state, chat), spotlightViewer: viewer, leaderboard: calculateLeaderboard(viewers), eventFx: { type: 'fireworks', viewerId: viewer.id, intensity: 1, until: timestamp + 4_500 } };
   }
   if (type === 'like') {
     const count = Math.max(1, asNumber(payload.likeCount ?? payload.count ?? payload.likes, 1));
     const { viewer, viewers } = withViewer(state, payload, Math.ceil(count / 10), 0, count);
     viewer.motion = 'heart'; viewer.motionUntil = timestamp + 2_800;
-    return { ...state, viewers, sessionLikes: state.sessionLikes + count, leaderboard: calculateLeaderboard(viewers) };
+    return { ...state, viewers, sessionLikes: state.sessionLikes + count, leaderboard: calculateLeaderboard(viewers), eventFx: count >= 10 ? { type: 'hearts', viewerId: viewer.id, intensity: Math.min(3, 1 + count / 100), until: timestamp + 3_500 } : state.eventFx };
   }
   if (type === 'gift') {
     const nestedGift = isRecord(payload.gift) ? payload.gift : {};
@@ -261,7 +270,7 @@ export function stageReducer(state: StageState, action: StageAction): StageState
       createdAt: timestamp,
     };
     const chat: ChatItem = { id: eventId('gift-chat', timestamp, viewer.id), viewer, message: `tặng ${gift.giftName} ×${count}`, kind: 'gift', createdAt: timestamp };
-    return { ...state, viewers, gifts: [...state.gifts, gift].slice(-4), chats: addChat(state, chat), spotlightViewer: viewer, leaderboard: calculateLeaderboard(viewers) };
+    return { ...state, viewers, gifts: [...state.gifts, gift].slice(-4), chats: addChat(state, chat), spotlightViewer: viewer, leaderboard: calculateLeaderboard(viewers), eventFx: { type: gift.superGift ? 'fireworks' : 'spotlight', viewerId: viewer.id, intensity: gift.superGift ? 3 : Math.min(2, 1 + count / 10), until: timestamp + (gift.superGift ? 8_000 : 5_000) } };
   }
   if (type === 'level') {
     const { viewer, viewers } = withViewer(state, payload);

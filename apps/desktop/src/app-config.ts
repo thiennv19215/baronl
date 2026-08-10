@@ -65,13 +65,15 @@ export const appConfigSchema = z.object({
       rights: z.enum(["owned", "licensed", "cc0", "placeholder"])
     })).max(500).default([]),
     currentTrackId: z.string().max(80).nullable().default(null),
-    playing: z.boolean().default(false)
+    playing: z.boolean().default(false),
+    crossfadeSeconds: z.number().min(0).max(8).default(1.5),
+    beatSensitivity: z.number().min(0.5).max(3).default(1.4)
   }),
   characters: z.object({
     enabled: z.boolean().default(true),
-    dualHost: z.boolean().default(false),
-    hostA: z.string().max(120).default("nova"),
-    hostB: z.string().max(120).default("pulse"),
+    dualHost: z.boolean().default(true),
+    hostA: z.string().max(120).default("Luna"),
+    hostB: z.string().max(120).default("Ryan"),
     lipSync: z.boolean().default(true),
     blink: z.boolean().default(true),
     shuffle: z.boolean().default(false)
@@ -83,6 +85,15 @@ export const appConfigSchema = z.object({
     model: z.string().max(160).default("gpt-4.1-mini"),
     persona: z.string().max(4_000).default("Bạn là MC thân thiện, sôi động và tôn trọng người xem."),
     autoHype: z.boolean().default(false),
+    mcEnabled: z.boolean().default(true),
+    djEnabled: z.boolean().default(true),
+    greetJoins: z.boolean().default(true),
+    commentReplies: z.boolean().default(true),
+    giftThanks: z.boolean().default(true),
+    praiseTease: z.boolean().default(true),
+    liveTime: z.boolean().default(true),
+    joinBatchSeconds: z.number().int().min(2).max(30).default(7),
+    liveTimeMinutes: z.number().int().min(5).max(120).default(15),
     hypeIntervalSeconds: z.number().int().min(15).max(3_600).default(120),
     rateLimitPerMinute: z.number().int().min(1).max(60).default(12),
     contentFilter: z.boolean().default(true),

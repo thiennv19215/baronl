@@ -82,6 +82,8 @@ export interface AppConfig {
     currentTrackId: string | null;
     volume: number;
     playing: boolean;
+    crossfadeSeconds: number;
+    beatSensitivity: number;
   };
   ai: {
     enabled: boolean;
@@ -90,6 +92,15 @@ export interface AppConfig {
     endpoint: string;
     persona: string;
     autoHype: boolean;
+    mcEnabled: boolean;
+    djEnabled: boolean;
+    greetJoins: boolean;
+    commentReplies: boolean;
+    giftThanks: boolean;
+    praiseTease: boolean;
+    liveTime: boolean;
+    joinBatchSeconds: number;
+    liveTimeMinutes: number;
     hypeIntervalSeconds: number;
     contentFilter: boolean;
     rateLimitPerMinute: number;

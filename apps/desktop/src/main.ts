@@ -110,8 +110,7 @@ function emitRuntime(event: { type: string; payload?: unknown }): void {
     const stageEvent = { type: liveEvent.type, payload: flattenedStageEvent(liveEvent) };
     localServer.broadcast(stageEvent.type, stageEvent.payload);
     sendTo(stageWindow, stageEvent);
-    if (liveEvent.type === "gift" && liveEvent.gift?.super) void autoHype?.trigger(`món quà ${liveEvent.gift.name} từ ${liveEvent.viewer?.name ?? "khán giả"}`);
-    else if (liveEvent.type === "follow") void autoHype?.trigger(`${liveEvent.viewer?.name ?? "một khán giả"} vừa follow`);
+    autoHype?.handleEvent(liveEvent);
     return;
   }
   if (event.type === "connection") {
@@ -120,6 +119,11 @@ function emitRuntime(event: { type: string; payload?: unknown }): void {
     localServer.broadcast(stageEvent.type, stageEvent.payload);
     sendTo(stageWindow, stageEvent);
     return;
+  }
+  if (event.type === "music" && event.payload && typeof event.payload === "object") {
+    const music = event.payload as AppConfig["music"];
+    const track = music.playlist?.find((item) => item.id === music.currentTrackId);
+    if (track && music.playing) void autoHype?.trigger(`DJ vừa chuyển sang bài ${track.title}`);
   }
   localServer.broadcast(event.type, event.payload);
   sendTo(stageWindow, event);
@@ -417,6 +421,10 @@ function registerIpc(): void {
     const parsed = z.object({ action: z.enum(["play", "pause", "next", "previous", "stop", "volume"]), value: z.number().min(0).max(100).optional() }).parse(payload);
     return liveRuntime.musicControl(parsed.action, parsed.value);
   });
+  handle("music:ended", (event) => {
+    assertInternalSender(event);
+    return liveRuntime.musicControl("next");
+  }, false);
   handle("asset:select", (_event, payload) => {
     const parsed = z.object({ kind: z.enum(["image", "video", "audio", "model"]) }).parse(payload);
     return importUserAsset(parsed.kind);
@@ -517,7 +525,7 @@ async function bootstrap(): Promise<void> {
     ai: aiService,
     speech: speechService,
     logger,
-    onCaption: (text) => emitRuntime({ type: "ai-caption", payload: { text, source: "auto-hype" } })
+    onCaption: (text, source) => emitRuntime({ type: "ai-caption", payload: { text, source } })
   });
   autoHype.refresh();
   serviceSupervisor = new ServiceSupervisor(logger);

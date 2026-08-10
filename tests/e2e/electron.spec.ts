@@ -110,6 +110,8 @@ test.describe.serial("OrbitStage Electron", () => {
     await stagePage.waitForLoadState("domcontentloaded");
     await expect(stagePage.locator(".stage")).toBeVisible();
     await expect(stagePage.getByText("ORBITSTAGE", { exact: true }).first()).toBeVisible();
+    await expect.poll(async () => stagePage.locator('.live2d-host').evaluate((node) => ({ failed: node.classList.contains('failed'), canvasWidth: node.querySelector('canvas')?.width ?? 0 })), { timeout: 15_000 }).toEqual({ failed: false, canvasWidth: expect.any(Number) });
+    expect(await stagePage.locator('.live2d-canvas').evaluate((canvas) => (canvas as HTMLCanvasElement).width)).toBeGreaterThan(0);
 
     await controlPage.getByRole("button", { name: /^Test LIVE/ }).click();
     await expect(controlPage.getByRole("heading", { level: 1, name: "Test LIVE" })).toBeVisible();

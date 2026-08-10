@@ -1,0 +1,10 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "Luna-Live2D-Cubism.moc3",
+		"Textures": [
+			"Luna-Live2D-Cubism.2048/texture_00.png"
+		],
+		"DisplayInfo": "Luna-Live2D-Cubism.cdi3.json"
+	}
+}

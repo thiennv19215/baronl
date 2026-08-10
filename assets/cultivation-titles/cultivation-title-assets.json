@@ -1,0 +1,212 @@
+[
+    {
+        "level":  1,
+        "title":  "Phàm Nhân",
+        "label":  "LV 1 · Phàm Nhân",
+        "asset":  "assets/cultivation-titles/lv01-pham-nhan.png",
+        "sha256":  "76b0589c17459a4b1628a193dc6ed1ba7e0db59b63b50958e56e5accf34e6ff4"
+    },
+    {
+        "level":  2,
+        "title":  "Luyện Thể",
+        "label":  "LV 2 · Luyện Thể",
+        "asset":  "assets/cultivation-titles/lv02-luyen-the.png",
+        "sha256":  "ced780db9501f7613827ce1dcd02429a234f13c37a8d52897853ab1d8585391b"
+    },
+    {
+        "level":  3,
+        "title":  "Tụ Khí",
+        "label":  "LV 3 · Tụ Khí",
+        "asset":  "assets/cultivation-titles/lv03-tu-khi.png",
+        "sha256":  "0eed94a8e5406d4743a1257ba1225ca4a16d538054477a9b390baf5641972851"
+    },
+    {
+        "level":  4,
+        "title":  "Luyện Khí",
+        "label":  "LV 4 · Luyện Khí",
+        "asset":  "assets/cultivation-titles/lv04-luyen-khi.png",
+        "sha256":  "a49ec7191572195cfc0d3864b47d2527b9fa0879728c85b11c51f12ca4328dbb"
+    },
+    {
+        "level":  5,
+        "title":  "Trúc Cơ",
+        "label":  "LV 5 · Trúc Cơ",
+        "asset":  "assets/cultivation-titles/lv05-truc-co.png",
+        "sha256":  "0f90806914cd87bc823f1f50e2774459d68c308ef24e2fb1c768f9f5f24327a9"
+    },
+    {
+        "level":  6,
+        "title":  "Khai Quang",
+        "label":  "LV 6 · Khai Quang",
+        "asset":  "assets/cultivation-titles/lv06-khai-quang.png",
+        "sha256":  "87f0dac0ce594d34270b104a35ec7a1f8a28a4fffeb5870a93757f6c52a824fa"
+    },
+    {
+        "level":  7,
+        "title":  "Dung Hợp",
+        "label":  "LV 7 · Dung Hợp",
+        "asset":  "assets/cultivation-titles/lv07-dung-hop.png",
+        "sha256":  "1e3817b37837c7928dedc6e1b865180e6e118f46543b90ee553bff84dd50a972"
+    },
+    {
+        "level":  8,
+        "title":  "Tâm Động",
+        "label":  "LV 8 · Tâm Động",
+        "asset":  "assets/cultivation-titles/lv08-tam-dong.png",
+        "sha256":  "9c6c92b257109db97039e06235a82ce2f21e3073d68f880f6efd86ad4054148c"
+    },
+    {
+        "level":  9,
+        "title":  "Linh Tịch",
+        "label":  "LV 9 · Linh Tịch",
+        "asset":  "assets/cultivation-titles/lv09-linh-tich.png",
+        "sha256":  "6281ceecb4a92a70e9d7c03e706a33b85691907b27ea9bfc2f034b9dc7770468"
+    },
+    {
+        "level":  10,
+        "title":  "Kim Đan",
+        "label":  "LV 10 · Kim Đan",
+        "asset":  "assets/cultivation-titles/lv10-kim-dan.png",
+        "sha256":  "0bb2f3f604f8504cceb0021f574bf0e44c7565b522857bec4ca63af95a559bb2"
+    },
+    {
+        "level":  11,
+        "title":  "Nguyên Anh",
+        "label":  "LV 11 · Nguyên Anh",
+        "asset":  "assets/cultivation-titles/lv11-nguyen-anh.png",
+        "sha256":  "4e90ed651ca0332ef3eb765f7a20e609f5126db715041b003e577fbf1dce05a5"
+    },
+    {
+        "level":  12,
+        "title":  "Xuất Khiếu",
+        "label":  "LV 12 · Xuất Khiếu",
+        "asset":  "assets/cultivation-titles/lv12-xuat-khieu.png",
+        "sha256":  "241c2c2c02a9c20ae4bf2e7e9fb42884cea92daff6299744ea40bd9971d963b7"
+    },
+    {
+        "level":  13,
+        "title":  "Phân Thần",
+        "label":  "LV 13 · Phân Thần",
+        "asset":  "assets/cultivation-titles/lv13-phan-than.png",
+        "sha256":  "8ee0d0c50b236567cb70cca765297805f11ea80abc2afdeff6cff92f40e7e4dc"
+    },
+    {
+        "level":  14,
+        "title":  "Hóa Thần",
+        "label":  "LV 14 · Hóa Thần",
+        "asset":  "assets/cultivation-titles/lv14-hoa-than.png",
+        "sha256":  "ac3c265bb82c42bfa6e4f0fdc323768d530ec3d5d60616338195dd4ec93dbfaa"
+    },
+    {
+        "level":  15,
+        "title":  "Luyện Hư",
+        "label":  "LV 15 · Luyện Hư",
+        "asset":  "assets/cultivation-titles/lv15-luyen-hu.png",
+        "sha256":  "3bb18b98271ce4a412aa8c8bca39f4a4aff0e769601d2ff1e5d23a58a37004ed"
+    },
+    {
+        "level":  16,
+        "title":  "Hợp Thể",
+        "label":  "LV 16 · Hợp Thể",
+        "asset":  "assets/cultivation-titles/lv16-hop-the.png",
+        "sha256":  "e08cdf3b0bdb0e73a8f623d833df41de01ecd4d0ed86c07c0c27d225d69f00a8"
+    },
+    {
+        "level":  17,
+        "title":  "Đại Thừa",
+        "label":  "LV 17 · Đại Thừa",
+        "asset":  "assets/cultivation-titles/lv17-dai-thua.png",
+        "sha256":  "3685e7c0415558a25cf648f432d1a71d269625500e16d0acbb4a1a09580f3ed2"
+    },
+    {
+        "level":  18,
+        "title":  "Độ Kiếp",
+        "label":  "LV 18 · Độ Kiếp",
+        "asset":  "assets/cultivation-titles/lv18-do-kiep.png",
+        "sha256":  "65fd72a3e69c1af19f402e8fb1532cae96312ea44a1f1ada669bad25549ee396"
+    },
+    {
+        "level":  19,
+        "title":  "Phi Thăng",
+        "label":  "LV 19 · Phi Thăng",
+        "asset":  "assets/cultivation-titles/lv19-phi-thang.png",
+        "sha256":  "9557381885336b54a992e424d04ca237c3276905d39f1c9cea9030f54a0a9b88"
+    },
+    {
+        "level":  20,
+        "title":  "Nhân Tiên",
+        "label":  "LV 20 · Nhân Tiên",
+        "asset":  "assets/cultivation-titles/lv20-nhan-tien.png",
+        "sha256":  "ed1339caa49cfee07cb1fcb46c53d804173dddcaa763b401e8e32e830304e18d"
+    },
+    {
+        "level":  21,
+        "title":  "Địa Tiên",
+        "label":  "LV 21 · Địa Tiên",
+        "asset":  "assets/cultivation-titles/lv21-dia-tien.png",
+        "sha256":  "cfceec4e021caeeea037e7905c1b864c13445125f77d2bdaa541f89620368d22"
+    },
+    {
+        "level":  22,
+        "title":  "Thiên Tiên",
+        "label":  "LV 22 · Thiên Tiên",
+        "asset":  "assets/cultivation-titles/lv22-thien-tien.png",
+        "sha256":  "d9241b59eb423292f075cd4072af79cf724bc415d65028ef14b5f2e702cc4707"
+    },
+    {
+        "level":  23,
+        "title":  "Huyền Tiên",
+        "label":  "LV 23 · Huyền Tiên",
+        "asset":  "assets/cultivation-titles/lv23-huyen-tien.png",
+        "sha256":  "68cc6ba035dc334b6dd22927c53bab87f5132c7f55254f08f09413c650f71307"
+    },
+    {
+        "level":  24,
+        "title":  "Kim Tiên",
+        "label":  "LV 24 · Kim Tiên",
+        "asset":  "assets/cultivation-titles/lv24-kim-tien.png",
+        "sha256":  "216feea7f64bb1558cec2328f69e60ca44a857926786ccddae7c3203b1083dfe"
+    },
+    {
+        "level":  25,
+        "title":  "Thái Ất Kim Tiên",
+        "label":  "LV 25 · Thái Ất Kim Tiên",
+        "asset":  "assets/cultivation-titles/lv25-thai-at-kim-tien.png",
+        "sha256":  "a369ef951a47d5e545b583b055807941a4788e307c9d74766abc47ca245ecef0"
+    },
+    {
+        "level":  26,
+        "title":  "Đại La Kim Tiên",
+        "label":  "LV 26 · Đại La Kim Tiên",
+        "asset":  "assets/cultivation-titles/lv26-dai-la-kim-tien.png",
+        "sha256":  "dc297ec4d611bfdb612a31b8ab6a34a05c1ae96077b9cb154b6df95671ae31e4"
+    },
+    {
+        "level":  27,
+        "title":  "Tiên Vương",
+        "label":  "LV 27 · Tiên Vương",
+        "asset":  "assets/cultivation-titles/lv27-tien-vuong.png",
+        "sha256":  "d33735a3ea42956da90be31daba43a4f18f7631b75bab50aa58763b9eec5405d"
+    },
+    {
+        "level":  28,
+        "title":  "Tiên Tôn",
+        "label":  "LV 28 · Tiên Tôn",
+        "asset":  "assets/cultivation-titles/lv28-tien-ton.png",
+        "sha256":  "04609d819bc6c3a94776fbc376139a7aa73dfa2c599400e6b4759e0de3190e75"
+    },
+    {
+        "level":  29,
+        "title":  "Tiên Đế",
+        "label":  "LV 29 · Tiên Đế",
+        "asset":  "assets/cultivation-titles/lv29-tien-de.png",
+        "sha256":  "b03ac024ede6ab50db3c8fd29cf18e64fb5ed9a57ee521c03637755c7a52a170"
+    },
+    {
+        "level":  30,
+        "title":  "Đạo Tổ",
+        "label":  "LV 30 · Đạo Tổ",
+        "asset":  "assets/cultivation-titles/lv30-dao-to.png",
+        "sha256":  "6dfc4a0cf9a8c5721061561af9485653e5f15d18c4a5fe61fc27051f2636f1a5"
+    }
+]

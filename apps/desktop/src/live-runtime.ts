@@ -105,7 +105,7 @@ interface RuntimeSnapshot {
   queueDepth: number;
   speechQueueDepth: number;
   uptimeSeconds: number;
-  music: { title: string; artist?: string; playing: boolean; volume: number; trackId?: string; source?: string };
+  music: { title: string; artist?: string; playing: boolean; volume: number; trackId?: string; source?: string; crossfadeSeconds: number; beatSensitivity: number };
   health: Record<string, "ok" | "warn" | "error">;
 }
 
@@ -286,6 +286,8 @@ export class LiveRuntime {
         title: track?.title ?? "Chưa chọn nhạc",
         playing: this.#config.music.playing,
         volume: this.#config.music.volume,
+        crossfadeSeconds: this.#config.music.crossfadeSeconds,
+        beatSensitivity: this.#config.music.beatSensitivity,
         ...(track ? { trackId: track.id, source: track.path } : {})
       },
       health: {
@@ -570,6 +572,7 @@ export class LiveRuntime {
 
   private process(event: LiveEvent): void {
     let wishesChanged = false;
+    let levelUp: { viewer: ViewerRecord; previousLevel: number } | undefined;
     if (event.viewer) {
       const existing = this.#viewers.get(event.viewer.id);
       const record: ViewerRecord = existing ?? {
@@ -581,6 +584,7 @@ export class LiveRuntime {
         followed: false,
         lastSeen: event.timestamp
       };
+      const previousLevel = record.level;
       record.name = event.viewer.name;
       if (event.viewer.avatar) record.avatar = event.viewer.avatar;
       record.lastSeen = event.timestamp;
@@ -606,6 +610,7 @@ export class LiveRuntime {
       }
       record.level = Math.max(event.viewer.level, levelForXp(record.xp));
       record.title = titleForLevel(record.level);
+      if (record.level > previousLevel) levelUp = { viewer: record, previousLevel };
       event.viewer = { id: record.id, name: record.name, level: record.level, title: record.title, ...(record.avatar ? { avatar: record.avatar } : {}) };
       this.#viewers.set(record.id, record);
       this.scheduleProgressPersist();
@@ -616,6 +621,7 @@ export class LiveRuntime {
       if (event.type === "chat") event.command = this.command(event.message ?? "", record);
     }
     this.options.onEvent({ type: "live-event", payload: event });
+    if (levelUp) this.options.onEvent({ type: "viewer-level-up", payload: { viewer: this.toStageViewer(levelUp.viewer), previousLevel: levelUp.previousLevel, level: levelUp.viewer.level, title: levelUp.viewer.title } });
     this.options.onEvent({ type: "leaderboard", payload: { viewers: this.leaderboard().map((viewer) => this.toStageViewer(viewer)) } });
     if (wishesChanged) this.emitWishes();
     this.options.logger.info("live.event", { type: event.type, source: event.source, viewerId: event.viewer?.id });

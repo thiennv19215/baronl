@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { getWebSocketUrl, initials, initialStageState, normalizeEnvelope, stageReducer } from './stageState';
 import { ThreeStage } from './ThreeStage';
+import { Live2DHost } from './Live2DHost';
 import type { GiftEffect, StageAction, StageConnection, StageEventEnvelope, StageState, StageViewer } from './types';
 
 const params = new URLSearchParams(window.location.search);
@@ -228,8 +229,9 @@ function App() {
     <section className={`stage theme-${state.appearance.theme} ${state.appearance.threeDEnabled ? 'dance-floor-mode' : ''}`} style={backgroundStyle} aria-label="Sân khấu OrbitStage LIVE">
       {state.appearance.backgroundType === 'video' && backgroundSource && <video className="stage-video" src={backgroundSource} autoPlay muted loop playsInline/>}
       {state.appearance.threeDEnabled && <ThreeStage quality={quality} live={state.live} musicPlaying={state.music.playing} audioEnergy={audioEnergy} speaking={Boolean(state.speech)} theme={state.appearance.theme} command={activeCommand} focusX={commandFocusX} leaderCount={Math.min(3, leaders.length)} giftActive={Boolean(currentGift && Date.now() - currentGift.createdAt < 7000)} settings={{ cameraMode: state.appearance.cameraMode, floorBright: state.appearance.floorBright, lasers: state.appearance.lasers, ledScreens: state.appearance.ledScreens, topPodiums: state.appearance.topPodiums }}/>}
-      {state.appearance.threeDEnabled && <DanceFloorActors viewers={Object.values(state.viewers)} command={activeCommand} settings={state.appearance}/>}
+      {state.appearance.threeDEnabled && <DanceFloorActors viewers={Object.values(state.viewers)} command={activeCommand} spotlightViewerId={state.eventFx?.viewerId} settings={state.appearance}/>}
       {state.appearance.commandBoardEnabled && <ViewerCommandBoard toggles={state.appearance.commandToggles} active={activeCommand}/>}
+      {state.eventFx && <StageEventFx effect={state.eventFx}/>}
       <div className="stage-vignette"/>
       <div className="nebula-cloud cloud-a"/><div className="nebula-cloud cloud-b"/>
       {quality !== 'low' && <StarField quality={quality}/>} 
@@ -246,7 +248,8 @@ function App() {
         {state.appearance.showLeaderboard && <Leaderboard viewers={leaders}/>} 
         <div className="like-counter"><span>♥</span><b>{compactNumber(state.sessionLikes)}</b></div>
 
-        {currentGift && <GiftCelebration gift={currentGift} showWish={state.appearance.showWishes} onDismissWish={dismissWish}/>} 
+      {currentGift && <GiftCelebration gift={currentGift} showWish={state.appearance.showWishes} onDismissWish={dismissWish}/>}
+      {state.levelUp && <LevelUpCelebration levelUp={state.levelUp}/>}
 
         {state.characters.enabled && <div className={`hosts ${state.characters.dualHost ? 'dual' : 'single'}`}>
           <Character name={state.characters.hostA} role="MC" variant="nova" speaking={state.speech?.host === 'a'} blink={state.characters.blink}/>
@@ -272,19 +275,32 @@ function App() {
 }
 
 function MusicAudio({ music, owner, onEnergy }: { music: StageState['music']; owner: boolean; onEnergy: (energy: number) => void }) {
-  const ref = useRef<HTMLAudioElement>(null);
-  const audioContextRef = useRef<AudioContext>();
+  const deckARef = useRef<HTMLAudioElement>(null);
+  const deckBRef = useRef<HTMLAudioElement>(null);
+  const graphRef = useRef<{ context: AudioContext; analyser: AnalyserNode; master: GainNode; gains: [GainNode, GainNode] } | null>(null);
+  const activeDeckRef = useRef(0);
+  const deckSourcesRef = useRef<[string, string]>(['', '']);
+  const pauseTimerRef = useRef<number>();
+  const beatSensitivityRef = useRef(music.beatSensitivity ?? 1.4);
+  beatSensitivityRef.current = music.beatSensitivity ?? 1.4;
   useEffect(() => {
-    const audio = ref.current;
-    if (!audio || !owner) { onEnergy(0); return; }
+    const deckA = deckARef.current;
+    const deckB = deckBRef.current;
+    if (!deckA || !deckB || !owner) { onEnergy(0); return; }
+    const decks: [HTMLAudioElement, HTMLAudioElement] = [deckA, deckB];
     const context = new AudioContext();
     const analyser = context.createAnalyser();
     analyser.fftSize = 256;
     analyser.smoothingTimeConstant = .82;
-    const source = context.createMediaElementSource(audio);
-    source.connect(analyser);
-    analyser.connect(context.destination);
-    audioContextRef.current = context;
+    const master = context.createGain();
+    const gains = [context.createGain(), context.createGain()] as [GainNode, GainNode];
+    decks.forEach((deck, index) => context.createMediaElementSource(deck).connect(gains[index]));
+    gains.forEach((gain) => gain.connect(analyser));
+    analyser.connect(master);
+    master.connect(context.destination);
+    gains[0].gain.value = 1;
+    gains[1].gain.value = 0;
+    graphRef.current = { context, analyser, master, gains };
     const bins = new Uint8Array(analyser.frequencyBinCount);
     let frame = 0;
     let lastUpdate = 0;
@@ -294,7 +310,7 @@ function MusicAudio({ music, owner, onEnergy }: { music: StageState['music']; ow
         let total = 0;
         const audibleBins = Math.ceil(bins.length * .58);
         for (let index = 0; index < audibleBins; index += 1) total += bins[index] ?? 0;
-        onEnergy(Math.min(1, (total / audibleBins / 255) * 2.15));
+        onEnergy(Math.min(1, (total / audibleBins / 255) * 2.15 * beatSensitivityRef.current));
         lastUpdate = now;
       }
       frame = requestAnimationFrame(sample);
@@ -302,24 +318,65 @@ function MusicAudio({ music, owner, onEnergy }: { music: StageState['music']; ow
     frame = requestAnimationFrame(sample);
     return () => {
       cancelAnimationFrame(frame);
-      source.disconnect();
       analyser.disconnect();
-      audioContextRef.current = undefined;
+      gains.forEach((gain) => gain.disconnect());
+      master.disconnect();
+      if (pauseTimerRef.current) window.clearTimeout(pauseTimerRef.current);
+      graphRef.current = null;
       void context.close();
       onEnergy(0);
     };
   }, [onEnergy, owner]);
   useEffect(() => {
-    const audio = ref.current;
-    if (!audio) return;
-    audio.volume = Math.max(0, Math.min(1, music.volume / 100));
-    if (owner && music.playing && music.source) {
-      void audioContextRef.current?.resume();
-      void audio.play().catch(() => undefined);
+    const deckA = deckARef.current;
+    const deckB = deckBRef.current;
+    const graph = graphRef.current;
+    if (!deckA || !deckB || !graph) return;
+    const decks: [HTMLAudioElement, HTMLAudioElement] = [deckA, deckB];
+    const now = graph.context.currentTime;
+    graph.master.gain.cancelScheduledValues(now);
+    graph.master.gain.setTargetAtTime(Math.max(0, Math.min(1, music.volume / 100)), now, .04);
+    const source = safeMediaSource(music.source ?? '') ?? '';
+    if (!owner || !music.playing || !source) {
+      decks.forEach((deck) => deck.pause());
+      return;
     }
-    else audio.pause();
-  }, [music.playing, music.source, music.volume, owner]);
-  return <audio ref={ref} src={safeMediaSource(music.source ?? '')} loop preload="auto" data-audio-owner={owner ? 'stage' : 'main'}/>;
+    void graph.context.resume();
+    const active = activeDeckRef.current;
+    if (deckSourcesRef.current[active] === source) {
+      void decks[active].play().catch(() => undefined);
+      return;
+    }
+    const next = deckSourcesRef.current[active] ? 1 - active : active;
+    const nextDeck = decks[next];
+    const previousDeck = decks[active];
+    deckSourcesRef.current[next] = source;
+    nextDeck.src = source;
+    nextDeck.currentTime = 0;
+    nextDeck.load();
+    const seconds = Math.max(0, Math.min(8, music.crossfadeSeconds ?? 1.5));
+    graph.gains[next].gain.cancelScheduledValues(now);
+    graph.gains[active].gain.cancelScheduledValues(now);
+    graph.gains[next].gain.setValueAtTime(seconds > 0 ? 0 : 1, now);
+    graph.gains[next].gain.linearRampToValueAtTime(1, now + seconds);
+    if (next !== active) {
+      graph.gains[active].gain.setValueAtTime(graph.gains[active].gain.value, now);
+      graph.gains[active].gain.linearRampToValueAtTime(0, now + seconds);
+    }
+    activeDeckRef.current = next;
+    void nextDeck.play().catch(() => undefined);
+    if (pauseTimerRef.current) window.clearTimeout(pauseTimerRef.current);
+    if (next !== active) pauseTimerRef.current = window.setTimeout(() => previousDeck.pause(), seconds * 1_000 + 120);
+  }, [music.crossfadeSeconds, music.playing, music.source, music.volume, owner]);
+  const handleEnded = (index: number) => {
+    if (index !== activeDeckRef.current || !owner) return;
+    if ((music.playlist?.length ?? 0) > 1) void window.orbitStage?.invoke?.('music:ended');
+    else {
+      const deck = index === 0 ? deckARef.current : deckBRef.current;
+      if (deck) { deck.currentTime = 0; void deck.play().catch(() => undefined); }
+    }
+  };
+  return <div className="music-audio-decks" data-audio-owner={owner ? 'stage' : 'main'}><audio ref={deckARef} preload="auto" onEnded={() => handleEnded(0)}/><audio ref={deckBRef} preload="auto" onEnded={() => handleEnded(1)}/></div>;
 }
 
 function StarField({ quality }: { quality: 'balanced' | 'high' }) {
@@ -337,7 +394,17 @@ function StarField({ quality }: { quality: 'balanced' | 'high' }) {
 function OrbitRings() { return <div className="orbit-rings"><i/><i/><i/><span/></div>; }
 
 const danceSprites = [34, 17, 8, 20, 17, 17, 6, 10, 17, 17, 17, 8, 8, 17] as const;
+const cultivationBadgeFiles = [
+  'lv01-pham-nhan', 'lv02-luyen-the', 'lv03-tu-khi', 'lv04-luyen-khi', 'lv05-truc-co', 'lv06-khai-quang', 'lv07-dung-hop', 'lv08-tam-dong', 'lv09-linh-tich', 'lv10-kim-dan',
+  'lv11-nguyen-anh', 'lv12-xuat-khieu', 'lv13-phan-than', 'lv14-hoa-than', 'lv15-luyen-hu', 'lv16-hop-the', 'lv17-dai-thua', 'lv18-do-kiep', 'lv19-phi-thang', 'lv20-nhan-tien',
+  'lv21-dia-tien', 'lv22-thien-tien', 'lv23-huyen-tien', 'lv24-kim-tien', 'lv25-thai-at-kim-tien', 'lv26-dai-la-kim-tien', 'lv27-tien-vuong', 'lv28-tien-ton', 'lv29-tien-de', 'lv30-dao-to',
+] as const;
 const projectAssetRoot = window.location.port === '5174' ? '' : '/project-assets';
+
+function cultivationBadgeSource(level: number): string {
+  const index = Math.min(cultivationBadgeFiles.length - 1, Math.floor((Math.max(1, level) - 1) * cultivationBadgeFiles.length / 99));
+  return `${projectAssetRoot}/cultivation-titles/${cultivationBadgeFiles[index]}.png`;
+}
 
 function stableHash(value: string): number {
   let hash = 2166136261;
@@ -345,7 +412,7 @@ function stableHash(value: string): number {
   return hash >>> 0;
 }
 
-function DanceFloorActors({ viewers, command, settings }: { viewers: StageViewer[]; command?: string; settings: StageState['appearance'] }) {
+function DanceFloorActors({ viewers, command, spotlightViewerId, settings }: { viewers: StageViewer[]; command?: string; spotlightViewerId?: string; settings: StageState['appearance'] }) {
   const actors = useMemo(() => {
     const maxActors = Math.max(8, Math.min(80, settings.maxFloorActors));
     const ranked = [...viewers].sort((a, b) => b.gifts - a.gifts || b.points - a.points || b.likes - a.likes);
@@ -382,7 +449,7 @@ function DanceFloorActors({ viewers, command, settings }: { viewers: StageViewer
       const wingFile = vipRank ? `top${vipRank}.png` : viewer.level >= 25 ? 'canh3.png' : undefined;
       const wingStyle = wingFile ? { backgroundImage: `url("${projectAssetRoot}/fx/dance/${wingFile}")` } : undefined;
       const motion = viewer.motionUntil && viewer.motionUntil > Date.now() ? viewer.motion : undefined;
-      return <div className={`floor-actor ${vipRank ? `vip vip-${vipRank}` : ''} ${motion ? `motion-${motion}` : ''}`} style={style} key={viewer.id}>{wingStyle && <i className="floor-actor-wings" style={wingStyle}/>}<span className="floor-actor-name">{vipRank && <em>TOP {vipRank}</em>}<b>{viewer.name}</b><small>LV.{viewer.level}</small></span><i className="floor-actor-emote">{motion === 'gift' ? '◆' : motion === 'heart' ? '♥' : motion === 'cheer' ? '★' : motion === 'wave' ? '👋' : motion === 'enter' ? '✦' : ''}</i><i className="floor-actor-shadow"/><span className="floor-actor-sprite" style={spriteStyle}/></div>;
+      return <div className={`floor-actor ${vipRank ? `vip vip-${vipRank}` : ''} ${spotlightViewerId === viewer.id ? 'spotlighted' : ''} ${motion ? `motion-${motion}` : ''}`} style={style} key={viewer.id}>{wingStyle && <i className="floor-actor-wings" style={wingStyle}/>}<i className="floor-actor-spotlight"/><span className="floor-actor-name">{vipRank && <em>TOP {vipRank}</em>}<img src={cultivationBadgeSource(viewer.level)} alt=""/><b>{viewer.name}</b><small>LV.{viewer.level}</small></span><i className="floor-actor-emote">{motion === 'gift' ? '◆' : motion === 'heart' ? '♥' : motion === 'cheer' ? '★' : motion === 'wave' ? '👋' : motion === 'enter' ? '✦' : ''}</i><i className="floor-actor-shadow"/><span className="floor-actor-sprite" style={spriteStyle}/></div>;
     })}
   </div>;
 }
@@ -392,6 +459,11 @@ const commandActions: Record<string, string> = { hey: 'HEY', quay: 'QUAY', camer
 
 function ViewerCommandBoard({ toggles, active }: { toggles: StageState['appearance']['commandToggles']; active?: string }) {
   return <aside className="viewer-command-board"><strong>LỆNH SÀN NHẢY</strong><div>{commandLabels.map((command) => <span key={command} className={`${toggles[command] === false ? 'disabled' : ''} ${commandActions[active ?? ''] === command ? 'active' : ''}`}>{command}</span>)}</div></aside>;
+}
+
+function StageEventFx({ effect }: { effect: NonNullable<StageState['eventFx']> }) {
+  const count = effect.type === 'fireworks' ? 28 : effect.type === 'hearts' ? 24 : 8;
+  return <div className={`stage-event-fx fx-${effect.type}`}>{Array.from({ length: count }, (_, index) => <i key={index} style={{ '--fx-x': `${(index * 47 + 13) % 100}%`, '--fx-delay': `${-(index % 9) * .18}s`, '--fx-size': `${(1.1 + (index % 4) * .45) * effect.intensity}cqw`, '--fx-duration': `${1.1 + (index % 5) * .32}s` } as React.CSSProperties}>{effect.type === 'hearts' ? '♥' : effect.type === 'fireworks' ? '✦' : ''}</i>)}</div>;
 }
 
 function Avatar({ viewer, style }: { viewer: StageViewer; style: StageState['appearance']['avatarStyle'] }) {
@@ -417,11 +489,15 @@ function GiftCelebration({ gift, showWish, onDismissWish }: { gift: GiftEffect; 
   </div>;
 }
 
+function LevelUpCelebration({ levelUp }: { levelUp: NonNullable<StageState['levelUp']> }) {
+  return <div className="level-up-celebration"><div className="level-up-rays">{Array.from({ length: 10 }, (_, index) => <i key={index}/>)}</div><img src={cultivationBadgeSource(levelUp.viewer.level)} alt=""/><p><small>ĐỘT PHÁ CẢNH GIỚI</small><strong>{levelUp.viewer.name}</strong><b>LV.{levelUp.previousLevel} → LV.{levelUp.viewer.level}</b><span>{levelUp.viewer.badge}</span></p></div>;
+}
+
 function Character({ name, role, variant, speaking, blink }: { name: string; role: string; variant: 'nova' | 'echo'; speaking: boolean; blink: boolean }) {
   const host = variant === 'nova' ? 'luna' : 'ryan';
   const state = speaking ? 'open' : 'closed';
   return <div className={`stage-character art-host ${variant} ${speaking ? 'speaking' : ''} ${blink ? 'blink-enabled' : ''}`}>
-    <div className="character-aura"><i/><i/></div><img className="host-art base-art" src={`${projectAssetRoot}/dual-host/${host}/${state}.png`} alt=""/>{blink && <img className="host-art blink-art" src={`${projectAssetRoot}/dual-host/${host}/blink.png`} alt=""/>}<div className="host-name"><small>{role}</small><strong>{name}</strong><i/></div>
+    <div className="character-aura"><i/><i/></div>{variant === 'nova' ? <Live2DHost assetRoot={projectAssetRoot} speaking={speaking} blink={blink} fallbackSource={`${projectAssetRoot}/dual-host/luna/${state}.png`}/> : <><img className="host-art base-art" src={`${projectAssetRoot}/dual-host/${host}/${state}.png`} alt=""/>{blink && <img className="host-art blink-art" src={`${projectAssetRoot}/dual-host/${host}/blink.png`} alt=""/>}</>}<div className="host-name"><small>{role}</small><strong>{name}</strong><i/></div>
   </div>;
 }
 

@@ -308,6 +308,7 @@ function LiveScreen({ config, runtime, patch, notify }: ScreenProps & { runtime:
         <CardTitle title="Audio coordinator" hint="Một nguồn phát duy nhất trên mọi stage." action={<button className="mini-action" onClick={() => void addMusic()}><span>＋</span>Thêm nhạc</button>}/>
         <div className="track"><div className={`album-art ${runtime.music?.playing ? 'playing' : ''}`}><Icon name="music" size={24}/></div><div><strong>{runtime.music?.title ?? 'Chưa chọn bản nhạc'}</strong><span>{runtime.music?.artist ?? 'Thư viện OrbitStage'}</span></div></div>
         <div className="player-controls"><button className="icon-button" onClick={() => void bridge.music('previous')}><Icon name="next" size={18}/></button><button className="play-button" onClick={() => void bridge.music(runtime.music?.playing ? 'pause' : 'play')}><Icon name={runtime.music?.playing ? 'pause' : 'play'} size={20}/></button><button className="icon-button" onClick={() => void bridge.music('next')}><Icon name="next" size={18}/></button><input aria-label="Âm lượng" type="range" min="0" max="100" value={runtime.music?.volume ?? 70} onChange={(e) => void bridge.music('volume', Number(e.target.value))}/><span>{runtime.music?.volume ?? 70}%</span></div>
+        <div className="form-grid"><Field label={`Crossfade · ${config.music.crossfadeSeconds}s`}><input type="range" min="0" max="8" step="0.5" value={config.music.crossfadeSeconds} onChange={(event) => void patch('music', { crossfadeSeconds: Number(event.target.value) })}/></Field><Field label={`Độ nhạy beat · ${config.music.beatSensitivity.toFixed(1)}×`}><input type="range" min="0.5" max="3" step="0.1" value={config.music.beatSensitivity} onChange={(event) => void patch('music', { beatSensitivity: Number(event.target.value) })}/></Field></div>
         <div className="music-catalog"><div className="catalog-label"><span>DANH MỤC NHẠC</span><b>{config.music.playlist.length} TRACK</b></div>{config.music.playlist.length ? config.music.playlist.slice(0, 4).map((track, index) => <div key={track.id} className={`catalog-track ${config.music.currentTrackId === track.id ? 'selected' : ''}`}><button onClick={() => void selectTrack(track.id)}><i>{String(index + 1).padStart(2, '0')}</i><p><strong>{track.title}</strong><small>{track.path}</small></p>{config.music.currentTrackId === track.id && <span>ĐANG CHỌN</span>}</button><select aria-label={`Quyền sử dụng ${track.title}`} value={track.rights} onChange={(event) => void updateTrackRights(track.id, event.target.value as typeof track.rights)}><option value="placeholder">Chưa xác nhận quyền</option><option value="owned">Dự án sở hữu</option><option value="licensed">Đã cấp phép</option><option value="cc0">CC0 / public domain</option></select></div>) : <button className="empty-track" onClick={() => void addMusic()}><i>＋</i><p><strong>Danh mục đang trống</strong><small>Thêm MP3, WAV, OGG hoặc M4A hợp lệ</small></p></button>}</div>
       </Card>
     </div>
@@ -508,6 +509,17 @@ function AiScreen({ config, patch, notify }: ScreenProps & { notify: (message: s
       <div className="form-grid"><Field label="Giới hạn/phút"><input type="number" min="1" max="60" value={ai.rateLimitPerMinute} onChange={(e) => void patch('ai', { rateLimitPerMinute: Number(e.target.value) })}/></Field><Field label="Chu kỳ hype (giây)"><input type="number" min="30" max="900" value={ai.hypeIntervalSeconds} onChange={(e) => void patch('ai', { hypeIntervalSeconds: Number(e.target.value) })}/></Field></div>
       <Toggle checked={ai.contentFilter} onChange={(contentFilter) => void patch('ai', { contentFilter })} label="Lọc nội dung" description="Chặn nội dung nhạy cảm và prompt injection cơ bản."/>
       <Toggle checked={ai.autoHype} onChange={(autoHype) => void patch('ai', { autoHype })} label="Auto-hype" description="Chỉ nói khi speech queue trống và LIVE có hoạt động."/>
+      <div className="form-grid"><Field label="Gom lời chào (giây)"><input type="number" min="2" max="30" value={ai.joinBatchSeconds} onChange={(e) => void patch('ai', { joinBatchSeconds: Number(e.target.value) })}/></Field><Field label="Báo giờ LIVE (phút)"><input type="number" min="5" max="120" value={ai.liveTimeMinutes} onChange={(e) => void patch('ai', { liveTimeMinutes: Number(e.target.value) })}/></Field></div>
+    </Card>
+    <Card>
+      <CardTitle title="Tự động tương tác" hint="MC và DJ dùng chung hàng đợi, không nói chồng."/>
+      <Toggle checked={ai.mcEnabled} onChange={(mcEnabled) => void patch('ai', { mcEnabled })} label="MC Luna" description="Chào thành viên, trả lời và cảm ơn quà."/>
+      <Toggle checked={ai.djEnabled} onChange={(djEnabled) => void patch('ai', { djEnabled })} label="DJ Ryan" description="Hype nhạc, party và chuyển bài."/>
+      <Toggle checked={ai.greetJoins} onChange={(greetJoins) => void patch('ai', { greetJoins })} label="Chào người mới theo nhóm"/>
+      <Toggle checked={ai.commentReplies} onChange={(commentReplies) => void patch('ai', { commentReplies })} label="Trả lời câu hỏi/bình luận"/>
+      <Toggle checked={ai.giftThanks} onChange={(giftThanks) => void patch('ai', { giftThanks })} label="Cảm ơn quà theo giá trị"/>
+      <Toggle checked={ai.praiseTease} onChange={(praiseTease) => void patch('ai', { praiseTease })} label="Khen và trêu vui an toàn"/>
+      <Toggle checked={ai.liveTime} onChange={(liveTime) => void patch('ai', { liveTime })} label="Thông báo thời lượng LIVE"/>
     </Card>
     <Card>
       <CardTitle title="TTS & hàng đợi giọng nói" hint="MC và DJ không bao giờ phát chồng tiếng."/>
@@ -568,75 +580,5 @@ function TestScreen({ notify }: { notify: (message: string, tone?: 'ok' | 'warn'
   </div>;
 }
 
-/* Legacy updater and license screens intentionally removed from the product.
-function UpdateScreen({ config, patch, runtime, update, setUpdate, notify, setDialog }: ScreenProps & { runtime: RuntimeSnapshot; update: UpdateSnapshot; setUpdate: (value: UpdateSnapshot | ((current: UpdateSnapshot) => UpdateSnapshot)) => void; notify: (message: string, tone?: 'ok' | 'warn' | 'error') => void; setDialog: (dialog: ConfirmDialog | undefined) => void }) {
-  const [health, setHealth] = useState<Record<string, unknown>>(runtime.health ?? {});
-  const [feedUrl, setFeedUrl] = useState(config.update.feedUrl ?? '');
-  useEffect(() => setFeedUrl(config.update.feedUrl ?? ''), [config.update.feedUrl]);
-  const check = async () => { setUpdate((current) => ({ ...current, status: 'checking' })); try { const next = await bridge.checkUpdate(); setUpdate(next); notify(next.status === 'available' ? `Đã tìm thấy v${next.availableVersion}.` : 'Bạn đang dùng bản mới nhất.'); } catch (error) { setUpdate((current) => ({ ...current, status: 'error' })); notify(error instanceof Error ? error.message : 'Kiểm tra cập nhật thất bại.', 'error'); } };
-  const runHealth = async () => { const next = await bridge.healthCheck(); setHealth(next); notify('Đã hoàn tất health check.'); };
-  const statusLabel: Record<UpdateSnapshot['status'], string> = { idle:'Sẵn sàng kiểm tra', checking:'Đang kiểm tra…', available:'Có bản cập nhật', downloading:'Đang tải…', ready:'Sẵn sàng cài', 'up-to-date':'Đã mới nhất', error:'Kiểm tra thất bại' };
-  return <div className="screen-grid update-grid">
-    <Card className="update-hero span-2"><div className="version-orbit"><span>v{update.currentVersion}</span><i/><i/></div><div><span className="eyebrow">SECURE RELEASE CHANNEL</span><h2>{statusLabel[update.status]}</h2><p>Manifest ký số · SHA-256 · backup tự động · rollback giao dịch</p>{update.availableVersion && <strong className="available-version">Bản {update.availableVersion} sẵn sàng</strong>}</div><button className="button primary" disabled={update.status === 'checking'} onClick={() => void check()}>{update.status === 'checking' ? <span className="spinner"/> : <Icon name="refresh" size={17}/>}Kiểm tra cập nhật</button></Card>
-    <Card>
-      <CardTitle title="Chuỗi tin cậy" hint="Không cài package chưa xác minh."/>
-      <div className="trust-steps"><TrustStep state="ok" title="Tải manifest" detail="HTTPS + schema validation"/><TrustStep state={update.signatureVerified ? 'ok' : 'idle'} title="Xác minh chữ ký & hash" detail="Ed25519 + SHA-256"/><TrustStep state={update.backupReady ? 'ok' : 'idle'} title="Tạo bản backup" detail="Config + phiên bản hiện tại"/><TrustStep state={update.status === 'ready' ? 'ok' : 'idle'} title="Cài đặt giao dịch" detail="Health gate trước commit"/></div>
-      {update.progress !== undefined && <div className="progress"><span style={{ width: `${update.progress}%` }}/><small>{update.progress}%</small></div>}
-      <div className="card-actions"><button className="button subtle" onClick={() => setDialog({ title:'Rollback bản cập nhật?', description:'OrbitStage sẽ đóng, khôi phục backup gần nhất rồi tự khởi động lại.', confirmLabel:'Rollback', tone:'danger', action: async () => { await bridge.rollback(); notify('Đã yêu cầu rollback an toàn.'); } })}>Rollback</button><button className="button secondary" disabled={update.status !== 'ready' && update.status !== 'available'} onClick={() => setDialog({ title:'Cài bản cập nhật?', description:'Một backup sẽ được tạo trước khi thay file. Ứng dụng có thể khởi động lại.', confirmLabel:'Cài & khởi động lại', action: async () => { await bridge.installUpdate(); } })}><Icon name="download" size={17}/>Cài cập nhật</button></div>
-    </Card>
-    <Card>
-      <CardTitle title="Sức khỏe hệ thống" hint="Kiểm tra dịch vụ và kết nối cục bộ." action={<button className="icon-button" onClick={() => void runHealth()}><Icon name="refresh" size={16}/></button>}/>
-      <div className="health-list">{Object.entries(health).map(([name, value]) => { const good = value === 'ok' || value === 'ready'; return <div key={name}><span><StatusDot state={good ? 'ok' : value === 'error' ? 'error' : 'warn'}/><strong>{healthNames[name] ?? name}</strong></span><b className={good ? 'good' : ''}>{String(value)}</b></div>; })}</div>
-      <button className="button secondary full" onClick={() => void bridge.exportDiagnostics().then((path) => notify(path ? `Đã lưu diagnostic bundle: ${path}` : 'Đã xuất diagnostic bundle đã che secret.'))}><Icon name="shield" size={17}/>Xuất diagnostic bundle</button>
-      <p className="privacy-note"><Icon name="shield" size={15}/>API key, license key và dữ liệu định danh được redaction trước khi đóng gói.</p>
-    </Card>
-    <Card className="span-2 update-settings">
-      <CardTitle title="Kênh cập nhật đã ký" hint="Public verification key được đóng gói ở Main process; renderer không nhận khóa." action={<span className="badge neutral"><Icon name="shield" size={13}/>SIGNED FEED</span>}/>
-      <div className="update-settings-grid">
-        <div>
-          <Toggle checked={config.update.enabled} onChange={(enabled) => void patch('update', { enabled }, enabled ? 'Đã bật kiểm tra cập nhật an toàn.' : 'Đã tắt updater.')} label="Bật updater" description="Chỉ cài package khi manifest, chữ ký và SHA-256 hợp lệ."/>
-          <Toggle checked={config.update.automaticCheck} onChange={(automaticCheck) => void patch('update', { automaticCheck })} label="Tự kiểm tra khi mở app" description="Không tự cài; người vận hành xác nhận trước." disabled={!config.update.enabled}/>
-        </div>
-        <div className="form-grid update-feed-form">
-          <Field label="Release channel"><select disabled={!config.update.enabled} value={config.update.channel} onChange={(event) => void patch('update', { channel: event.target.value as AppConfig['update']['channel'] })}><option value="stable">Stable · ổn định</option><option value="beta">Beta · thử nghiệm</option></select></Field>
-          <Field label="Signed feed URL" span hint="HTTPS endpoint trả manifest đã ký; khóa xác minh nằm trong Main."><input disabled={!config.update.enabled} value={feedUrl} placeholder="https://updates.example.com/orbitstage" onChange={(event) => setFeedUrl(event.target.value)}/></Field>
-          <div className="field-span feed-actions"><button className="button ghost" onClick={() => setFeedUrl(config.update.feedUrl ?? '')}>Hoàn tác</button><button className="button secondary" disabled={!config.update.enabled || (!!feedUrl && !/^https:\/\//i.test(feedUrl))} onClick={() => void patch('update', { feedUrl: feedUrl.trim() || undefined }, 'Đã lưu signed feed URL.')}>Lưu kênh cập nhật</button></div>
-        </div>
-      </div>
-    </Card>
-  </div>;
-}
-
-const healthNames: Record<string, string> = { desktop:'Electron Main', localServer:'Local HTTP / WS', tikfinity:'TikFinity bridge', aiWorker:'AI / TTS worker', audio:'Audio coordinator', database:'Local config store' };
-
-function TrustStep({ state, title, detail }: { state: 'ok' | 'idle'; title: string; detail: string }) { return <div className={state === 'ok' ? 'complete' : ''}><span>{state === 'ok' ? <Icon name="check" size={15}/> : null}</span><p><strong>{title}</strong><small>{detail}</small></p></div>; }
-
-function LicenseScreen({ config, patch, notify }: ScreenProps & { notify: (message: string, tone?: 'ok' | 'warn' | 'error') => void }) {
-  const [key, setKey] = useState('');
-  const [activating, setActivating] = useState(false);
-  const [licenseMessage, setLicenseMessage] = useState('');
-  const [serverUrl, setServerUrl] = useState(config.license.serverUrl ?? '');
-  const [offlineGraceDays, setOfflineGraceDays] = useState(config.license.offlineGraceDays);
-  useEffect(() => { setServerUrl(config.license.serverUrl ?? ''); setOfflineGraceDays(config.license.offlineGraceDays); }, [config.license.serverUrl, config.license.offlineGraceDays]);
-  const enabled = config.license.enabled;
-  const activate = async () => { if (!key.trim()) return notify('Nhập license key trước.', 'warn'); setActivating(true); try { const result = await bridge.activateLicense(key.trim()); setLicenseMessage(result.message ?? (result.active ? 'License hợp lệ.' : 'License không hợp lệ.')); if (result.active) { setKey(''); notify('Đã kích hoạt license.'); } } catch (error) { notify(error instanceof Error ? error.message : 'Kích hoạt thất bại.', 'error'); } finally { setActivating(false); } };
-  return <div className="screen-grid license-grid">
-    <Card className="license-hero span-2"><div className="free-medallion"><Icon name="sparkles" size={26}/><strong>FREE</strong></div><div><span className="eyebrow">ORBITSTAGE COMMUNITY</span><h2>{enabled ? 'Module license đang được bật' : 'Miễn phí, đầy đủ tính năng'}</h2><p>{enabled ? 'Kích hoạt bằng hệ thống license riêng của dự án. Không có cơ chế bypass.' : 'Cài đặt mặc định không yêu cầu license, không giới hạn phiên LIVE.'}</p></div><span className={`license-state ${enabled ? 'enabled' : ''}`}>{enabled ? 'LICENSE MODE' : 'FREE MODE'}</span></Card>
-    <Card>
-      <CardTitle title="Chế độ phân phối" hint="Thay đổi này dành cho chủ dự án phát hành bản thương mại."/>
-      <Toggle checked={enabled} onChange={(value) => void patch('license', { enabled: value }, value ? 'Đã bật module license.' : 'Đã chuyển sang chế độ miễn phí.')} label="Bật module license" description="Mặc định tắt. App hoạt động miễn phí khi tắt."/>
-      <div className="form-grid license-server-form"><Field label="License server" span hint="Chỉ dùng endpoint do dự án mới sở hữu."><input disabled={!enabled} value={serverUrl} placeholder="https://license.example.com" onChange={(event) => setServerUrl(event.target.value)}/></Field><Field label="Offline grace (ngày)"><input disabled={!enabled} type="number" min="0" max="365" value={offlineGraceDays} onChange={(event) => setOfflineGraceDays(Number(event.target.value))}/></Field><div className="license-save"><button className="button secondary" disabled={!enabled || (!!serverUrl && !/^https:\/\//i.test(serverUrl))} onClick={() => void patch('license', { serverUrl: serverUrl.trim() || undefined, offlineGraceDays }, 'Đã lưu chính sách license.')}>Lưu chính sách</button></div></div>
-      <div className="license-policy"><div><Icon name="check" size={17}/><p><strong>Không sao chép license cũ</strong><span>Chỉ dùng server và key do dự án OrbitStage sở hữu.</span></p></div><div><Icon name="check" size={17}/><p><strong>Offline policy rõ ràng</strong><span>Grace period phải được công bố khi phát hành.</span></p></div><div><Icon name="check" size={17}/><p><strong>Không có bypass</strong><span>Free mode là cấu hình sản phẩm, không phải né kiểm tra.</span></p></div></div>
-    </Card>
-    <Card className={!enabled ? 'disabled-card' : ''}>
-      <CardTitle title="Kích hoạt" hint="Key được chuyển thẳng tới Main process và không ghi log." action={<span className="badge neutral"><Icon name="shield" size={13}/>REDACTED</span>}/>
-      <Field label="License key"><input type="password" autoComplete="off" disabled={!enabled} value={key} placeholder="ORBIT-XXXX-XXXX-XXXX" onChange={(e) => setKey(e.target.value.toUpperCase())}/></Field>
-      <button className="button primary full" disabled={!enabled || activating} onClick={() => void activate()}>{activating ? <span className="spinner"/> : <Icon name="license" size={17}/>}Kích hoạt an toàn</button>
-      {licenseMessage && <p className="inline-message">{licenseMessage}</p>}
-      {!enabled && <div className="disabled-overlay"><Icon name="license" size={23}/><strong>Không cần kích hoạt ở Free mode</strong></div>}
-    </Card>
-  </div>;
-}
-*/
 
 export default App;
