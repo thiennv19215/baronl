@@ -393,7 +393,7 @@ function StarField({ quality }: { quality: 'balanced' | 'high' }) {
 
 function OrbitRings() { return <div className="orbit-rings"><i/><i/><i/><span/></div>; }
 
-const danceSprites = [34, 17, 8, 20, 17, 17, 6, 10, 17, 17, 17, 8, 8, 17] as const;
+const danceSprites = [34, 17, 8, 20, 17, 17, 6, 10, 17, 17, 17, 17, 17, 17] as const;
 const cultivationBadgeFiles = [
   'lv01-pham-nhan', 'lv02-luyen-the', 'lv03-tu-khi', 'lv04-luyen-khi', 'lv05-truc-co', 'lv06-khai-quang', 'lv07-dung-hop', 'lv08-tam-dong', 'lv09-linh-tich', 'lv10-kim-dan',
   'lv11-nguyen-anh', 'lv12-xuat-khieu', 'lv13-phan-than', 'lv14-hoa-than', 'lv15-luyen-hu', 'lv16-hop-the', 'lv17-dai-thua', 'lv18-do-kiep', 'lv19-phi-thang', 'lv20-nhan-tien',

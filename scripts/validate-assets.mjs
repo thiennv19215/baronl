@@ -167,6 +167,12 @@ if (manifest) {
       assert(asset.sha256 === digest, 'HASH_MISMATCH', `sha256 mismatch: manifest=${asset.sha256}, actual=${digest}`, id);
       const mime = expectedMime.get(extname(pathValue).toLowerCase());
       if (mime) assert(asset.mimeType === mime, 'MIME_MISMATCH', `Expected ${mime} for ${pathValue}, got ${asset.mimeType}`, id);
+      if (extname(pathValue).toLowerCase() === '.png' && Number.isInteger(asset.metadata.frameWidth) && Number.isInteger(asset.metadata.frameHeight) && Number.isInteger(asset.metadata.frames)) {
+        const pngWidth = content.readUInt32BE(16);
+        const pngHeight = content.readUInt32BE(20);
+        assert(pngWidth === asset.metadata.frameWidth * asset.metadata.frames, 'SPRITE_WIDTH_MISMATCH', `Sprite width mismatch: metadata=${asset.metadata.frameWidth}×${asset.metadata.frames}, actual=${pngWidth}`, id);
+        assert(pngHeight === asset.metadata.frameHeight, 'SPRITE_HEIGHT_MISMATCH', `Sprite height mismatch: metadata=${asset.metadata.frameHeight}, actual=${pngHeight}`, id);
+      }
       if (extname(pathValue).toLowerCase() === '.svg') {
         const svg = content.toString('utf8');
         assert(/^\s*<svg\b/i.test(svg), 'SVG_ROOT', `SVG root is missing: ${pathValue}`, id);
