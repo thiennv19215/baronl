@@ -66,9 +66,9 @@ export function ThreeStage({ quality, live, musicPlaying, speaking, theme, comma
     mount.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x09050e, 0.045);
-    const camera = new THREE.PerspectiveCamera(46, 9 / 16, 0.1, 100);
-    camera.position.set(0, 4.8, 13.5);
-    camera.lookAt(0, 1.5, -3.4);
+    const camera = new THREE.PerspectiveCamera(58, 9 / 16, 0.1, 120);
+    camera.position.set(0, 7.2, 16.8);
+    camera.lookAt(0, -0.15, -3.8);
     const group = new THREE.Group();
     scene.add(group);
 
@@ -272,8 +272,9 @@ export function ThreeStage({ quality, live, musicPlaying, speaking, theme, comma
         const focusCommand = ["camera", "quay"].includes(commandRef.current ?? "");
         const sway = focusCommand ? 1.45 : stageSettings.cameraMode === 'cinematic' ? .95 : .34;
         camera.position.x = Math.sin(elapsed * .16) * sway;
-        camera.position.y = 4.8 + Math.sin(elapsed * .12) * sway * .32;
-        camera.lookAt(0, 1.5, -3.4);
+        camera.position.y = 7.2 + Math.sin(elapsed * .12) * sway * .32;
+        camera.position.z = 16.8 + Math.cos(elapsed * .1) * sway * .22;
+        camera.lookAt(0, -0.15, -3.8);
       }
       renderer.render(scene, camera);
     };

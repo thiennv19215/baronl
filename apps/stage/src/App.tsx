@@ -310,7 +310,7 @@ function DanceFloorActors({ viewers, command }: { viewers: StageViewer[]; comman
     const column = index % 5;
     const jitterX = ((hash >>> 8) % 13) - 6;
     const jitterY = ((hash >>> 16) % 7) - 3;
-    return { viewer, frames: danceSprites[spriteIndex] ?? 17, sprite: spriteIndex + 1, left: Math.max(8, Math.min(88, 12 + column * 19 + jitterX)), top: Math.max(4, Math.min(86, 7 + row * 17 + jitterY)), delay: -((hash % 1400) / 1000) };
+    return { viewer, frames: danceSprites[spriteIndex] ?? 17, sprite: spriteIndex + 1, left: Math.max(4, Math.min(96, 6 + column * 22 + jitterX)), top: Math.max(3, Math.min(90, 6 + row * 18 + jitterY)), delay: -((hash % 1400) / 1000) };
   }), [viewers]);
   return <div className={`dance-floor-actors ${command === 'dance' || command === 'party' ? 'party' : ''}`}>
     {actors.map(({ viewer, frames, sprite, left, top, delay }) => {
