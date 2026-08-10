@@ -48,6 +48,15 @@ body, button { font-family: inherit; }
 .three-stage { position:absolute; z-index:0; inset:0; overflow:hidden; pointer-events:none; mix-blend-mode:screen; opacity:.82; }
 .three-stage canvas { display:block; width:100%; height:100%; }
 .stage-viewport.transparent .three-stage { opacity:.48; }
+.dance-floor-actors{position:absolute;z-index:5;left:0;right:0;top:37%;bottom:8%;overflow:hidden;pointer-events:none;perspective:80cqw;mask-image:linear-gradient(to bottom,transparent 0,#000 6%,#000 96%,transparent)}
+.floor-actor{--actor-scale:1;--actor-delay:0s;position:absolute;width:15cqw;height:18cqw;transform:translate(-50%,-50%) scale(var(--actor-scale));transform-origin:50% 100%;filter:drop-shadow(0 1.2cqw 1cqw rgba(0,0,0,.62));animation:floor-actor-float 2.2s ease-in-out var(--actor-delay) infinite alternate}
+.floor-actor-sprite{position:absolute;z-index:2;left:50%;bottom:0;width:14cqw;height:14cqw;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;transform:translateX(-50%);animation:floor-sprite-play 1.42s var(--actor-delay) infinite}
+.floor-actor-name{position:absolute;z-index:4;left:50%;bottom:14.1cqw;display:flex;align-items:center;gap:.7cqw;max-width:20cqw;padding:.45cqw .9cqw;border:1px solid rgba(62,231,255,.48);border-radius:99px;color:#fff;background:rgba(2,8,15,.8);box-shadow:0 0 1.2cqw rgba(36,220,255,.35);font-style:normal;line-height:1;transform:translateX(-50%);white-space:nowrap}
+.floor-actor-name b{overflow:hidden;max-width:13cqw;font-size:1.15cqw;text-overflow:ellipsis}.floor-actor-name small{color:#5cf3ff;font-size:.74cqw;font-weight:900}
+.floor-actor-shadow{position:absolute;z-index:1;left:50%;bottom:.5cqw;width:8cqw;height:2.2cqw;border-radius:50%;background:radial-gradient(ellipse,rgba(31,228,255,.42),rgba(31,228,255,.08) 48%,transparent 72%);filter:blur(.35cqw);transform:translateX(-50%)}
+.dance-floor-actors.party .floor-actor{animation-duration:.48s}.dance-floor-actors.party .floor-actor-shadow{background:radial-gradient(ellipse,rgba(255,72,177,.65),rgba(40,229,255,.16) 52%,transparent 74%)}
+.dance-floor-mode .hosts,.dance-floor-mode .leaderboard,.dance-floor-mode .chat-stack{display:none}
+.dance-floor-mode .stage-header{opacity:.62}.dance-floor-mode .like-counter{top:2cqw;right:4cqw;opacity:.72}.dance-floor-mode .stage-content{z-index:8;pointer-events:none}
 .stage-vignette { position:absolute;z-index:20;inset:0;pointer-events:none;box-shadow:inset 0 0 14cqw rgba(1,2,8,.72); }
 
 .nebula-cloud { position:absolute;z-index:-2;width:75cqw;height:75cqw;border-radius:50%;filter:blur(9cqw);opacity:.2;pointer-events:none; }
@@ -126,6 +135,8 @@ body, button { font-family: inherit; }
 @keyframes orbital-dot{to{transform:rotate(360deg) translateX(52cqw) rotate(-360deg)}}
 @keyframes live-pulse{50%{opacity:.35;transform:scale(.8)}}
 @keyframes led-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes floor-sprite-play{to{background-position:100% 0}}
+@keyframes floor-actor-float{from{margin-top:0}to{margin-top:-1.1cqw}}
 @keyframes led-breathe{50%{opacity:.46;filter:brightness(1.8)}}
 @keyframes character-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.2cqw)}}
 @keyframes character-float-echo{0%,100%{transform:scaleX(-1) translateY(0)}50%{transform:scaleX(-1) translateY(-1.2cqw)}}

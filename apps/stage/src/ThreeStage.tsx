@@ -99,10 +99,10 @@ export function ThreeStage({ quality, live, musicPlaying, speaking, theme, comma
       group.add(pool);
       floorPools.push(pool);
     });
-    const grid = new THREE.GridHelper(38, 38, 0x7f193e, 0x210c18);
+    const grid = new THREE.GridHelper(42, 42, 0x49f3ff, 0x0b8ba4);
     grid.position.y = -1.79;
     (grid.material as THREE.Material).transparent = true;
-    (grid.material as THREE.Material).opacity = 0.35;
+    (grid.material as THREE.Material).opacity = 0.72;
     group.add(grid);
 
     const rings = new THREE.Group();

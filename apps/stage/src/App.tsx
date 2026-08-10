@@ -211,6 +211,7 @@ function App() {
   const backgroundSource = safeMediaSource(state.appearance.backgroundSource);
   const backgroundStyle = state.appearance.backgroundType === 'image' && backgroundSource ? { backgroundImage: `url("${backgroundSource.replaceAll('"', '%22')}")` } : undefined;
   const quality = state.appearance.effectQuality;
+  const activeCommand = state.stageCommand?.until && state.stageCommand.until > Date.now() ? state.stageCommand.name : undefined;
   const dismissWish = useCallback((id: string) => {
     dispatch({ type: 'event', event: { type: 'wish:remove', payload: { id } } });
     const facade = window.orbitStage;
@@ -221,9 +222,10 @@ function App() {
   }, []);
 
   return <main className={`stage-viewport quality-${quality} ${state.appearance.transparent ? 'transparent' : ''}`}>
-    <section className={`stage theme-${state.appearance.theme}`} style={backgroundStyle} aria-label="Sân khấu OrbitStage LIVE">
+    <section className={`stage theme-${state.appearance.theme} ${state.appearance.threeDEnabled ? 'dance-floor-mode' : ''}`} style={backgroundStyle} aria-label="Sân khấu OrbitStage LIVE">
       {state.appearance.backgroundType === 'video' && backgroundSource && <video className="stage-video" src={backgroundSource} autoPlay muted loop playsInline/>}
-      {state.appearance.threeDEnabled && <ThreeStage quality={quality} live={state.live} musicPlaying={state.music.playing} speaking={Boolean(state.speech)} theme={state.appearance.theme} command={state.stageCommand?.until && state.stageCommand.until > Date.now() ? state.stageCommand.name : undefined} leaderCount={Math.min(3, leaders.length)} giftActive={Boolean(currentGift && Date.now() - currentGift.createdAt < 7000)} settings={{ cameraMode: state.appearance.cameraMode, floorBright: state.appearance.floorBright, lasers: state.appearance.lasers, ledScreens: state.appearance.ledScreens, topPodiums: state.appearance.topPodiums }}/>} 
+      {state.appearance.threeDEnabled && <ThreeStage quality={quality} live={state.live} musicPlaying={state.music.playing} speaking={Boolean(state.speech)} theme={state.appearance.theme} command={activeCommand} leaderCount={Math.min(3, leaders.length)} giftActive={Boolean(currentGift && Date.now() - currentGift.createdAt < 7000)} settings={{ cameraMode: state.appearance.cameraMode, floorBright: state.appearance.floorBright, lasers: state.appearance.lasers, ledScreens: state.appearance.ledScreens, topPodiums: state.appearance.topPodiums }}/>} 
+      {state.appearance.threeDEnabled && <DanceFloorActors viewers={Object.values(state.viewers)} command={activeCommand}/>} 
       <div className="stage-vignette"/>
       <div className="nebula-cloud cloud-a"/><div className="nebula-cloud cloud-b"/>
       {quality !== 'low' && <StarField quality={quality}/>} 
@@ -290,6 +292,34 @@ function StarField({ quality }: { quality: 'balanced' | 'high' }) {
 }
 
 function OrbitRings() { return <div className="orbit-rings"><i/><i/><i/><span/></div>; }
+
+const danceSprites = [34, 17, 8, 20, 17, 17, 6, 10, 17, 17, 17, 8, 8, 17] as const;
+const projectAssetRoot = window.location.port === '5174' ? '' : '/project-assets';
+
+function stableHash(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
+  return hash >>> 0;
+}
+
+function DanceFloorActors({ viewers, command }: { viewers: StageViewer[]; command?: string }) {
+  const actors = useMemo(() => viewers.slice(0, 24).map((viewer, index) => {
+    const hash = stableHash(viewer.id);
+    const spriteIndex = hash % danceSprites.length;
+    const row = Math.floor(index / 5);
+    const column = index % 5;
+    const jitterX = ((hash >>> 8) % 13) - 6;
+    const jitterY = ((hash >>> 16) % 7) - 3;
+    return { viewer, frames: danceSprites[spriteIndex] ?? 17, sprite: spriteIndex + 1, left: Math.max(8, Math.min(88, 12 + column * 19 + jitterX)), top: Math.max(4, Math.min(86, 7 + row * 17 + jitterY)), delay: -((hash % 1400) / 1000) };
+  }), [viewers]);
+  return <div className={`dance-floor-actors ${command === 'dance' || command === 'party' ? 'party' : ''}`}>
+    {actors.map(({ viewer, frames, sprite, left, top, delay }) => {
+      const style = { left: `${left}%`, top: `${top}%`, zIndex: Math.round(top), '--actor-scale': .66 + (top / 100) * .58, '--actor-delay': `${delay}s` } as React.CSSProperties;
+      const spriteStyle = { backgroundImage: `url("${projectAssetRoot}/avatars/dance/char-${String(sprite).padStart(2, '0')}-sheet.png")`, backgroundSize: `${frames * 100}% 100%`, animationTimingFunction: `steps(${frames})` } as React.CSSProperties;
+      return <div className="floor-actor" style={style} key={viewer.id}><span className="floor-actor-name"><b>{viewer.name}</b><small>LV.{viewer.level}</small></span><i className="floor-actor-shadow"/><span className="floor-actor-sprite" style={spriteStyle}/></div>;
+    })}
+  </div>;
+}
 
 function Avatar({ viewer, style }: { viewer: StageViewer; style: StageState['appearance']['avatarStyle'] }) {
   const source = safeMediaSource(viewer.avatar ?? '');

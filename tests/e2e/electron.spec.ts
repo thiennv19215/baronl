@@ -123,6 +123,7 @@ test.describe.serial("OrbitStage Electron", () => {
     await expect(controlPage.getByText("Đã gửi event gift vào pipeline.", { exact: true })).toBeVisible();
     await expect(stagePage.getByRole("heading", { level: 2, name: "E2E Comet" })).toBeVisible({ timeout: 8_000 });
     await expect(stagePage.getByText("E2E Nova", { exact: true }).first()).toBeVisible();
+    await expect(stagePage.locator(".floor-actor").filter({ hasText: "E2E Nova" })).toBeVisible();
     await expect(stagePage.getByText("×2", { exact: true }).first()).toBeVisible();
     await expect(stagePage.locator(".chat-bubble").filter({ hasText: "E2E Comet ×2" })).toHaveCount(1);
 
@@ -163,21 +164,24 @@ test.describe.serial("OrbitStage Electron", () => {
     expect(aiResult.text).toContain("E2E AI caption");
     await expect(stagePage.getByText("E2E AI caption: pipeline an to\u00e0n s\u00e0ng s\u00e0ng.", { exact: true })).toBeVisible();
 
-    const ttsEvent = stagePage.evaluate(() => new Promise<{ source?: string; text?: string }>((resolve, reject) => {
+    await stagePage.evaluate(() => {
       const bridge = (globalThis as typeof globalThis & { orbitStage?: { subscribe?: (listener: (event: { type: string; payload?: unknown }) => void) => (() => void) } }).orbitStage;
-      const timer = setTimeout(() => reject(new Error("Did not receive TTS event")), 8_000);
-      const unsubscribe = bridge?.subscribe?.((event) => {
-        if (event.type !== "tts-audio") return;
-        clearTimeout(timer);
-        unsubscribe?.();
-        resolve(event.payload as { source?: string; text?: string });
+      (globalThis as typeof globalThis & { __ttsEventPromise?: Promise<{ source?: string; text?: string }> }).__ttsEventPromise = new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("Did not receive TTS event")), 8_000);
+        const unsubscribe = bridge?.subscribe?.((event) => {
+          if (event.type !== "tts-audio") return;
+          clearTimeout(timer);
+          unsubscribe?.();
+          resolve(event.payload as { source?: string; text?: string });
+        });
       });
-    }));
+    });
     await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { invoke: (channel: string, payload?: unknown) => Promise<unknown> } }).orbitStage;
       await bridge.invoke("tts:test", { text: "E2E TTS kh\u00f4ng ch\u1ed3ng gi\u1ecdng" });
     });
-    await expect(await ttsEvent).toMatchObject({ source: "test", text: "E2E TTS kh\u00f4ng ch\u1ed3ng gi\u1ecdng" });
+    const ttsEvent = await stagePage.evaluate(() => (globalThis as typeof globalThis & { __ttsEventPromise: Promise<{ source?: string; text?: string }> }).__ttsEventPromise);
+    await expect(ttsEvent).toMatchObject({ source: "test", text: "E2E TTS kh\u00f4ng ch\u1ed3ng gi\u1ecdng" });
 
     await stagePage.close();
     const reopenedPromise = electronApp.waitForEvent("window");
