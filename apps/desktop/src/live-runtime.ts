@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import WebSocket from "ws";
 import { z } from "zod";
 import type { AppConfig } from "./app-config";
@@ -109,6 +111,7 @@ interface RuntimeSnapshot {
 
 interface LiveRuntimeOptions {
   config: AppConfig;
+  dataDirectory: string;
   logger: StructuredLogger;
   stageUrl: () => string;
   onEvent: (event: { type: string; payload?: unknown }) => void;
@@ -172,13 +175,21 @@ function levelForXp(xp: number): number {
   return Math.min(99, Math.max(1, Math.floor(Math.sqrt(Math.max(0, xp) / 25)) + 1));
 }
 
-function titleForLevel(level: number): string {
-  if (level >= 40) return "Huyền thoại quỹ đạo";
-  if (level >= 25) return "Siêu sao thiên hà";
-  if (level >= 15) return "Phi hành gia VIP";
-  if (level >= 8) return "Ngôi sao thân thiết";
-  if (level >= 3) return "Bạn đồng hành";
-  return "Khách mới";
+export const CULTIVATION_TITLES = [
+  "Phàm Nhân", "Luyện Thể", "Tụ Khí", "Luyện Khí", "Trúc Cơ", "Khai Quang", "Dung Hợp", "Tâm Động", "Linh Tịch", "Kim Đan",
+  "Nguyên Anh", "Xuất Khiếu", "Phân Thần", "Hóa Thần", "Luyện Hư", "Hợp Thể", "Đại Thừa", "Độ Kiếp", "Phi Thăng", "Nhân Tiên",
+  "Địa Tiên", "Thiên Tiên", "Huyền Tiên", "Kim Tiên", "Thái Ất Kim Tiên", "Đại La Kim Tiên", "Tiên Vương", "Tiên Tôn", "Tiên Đế", "Đạo Tổ"
+] as const;
+
+export function titleForLevel(level: number): string {
+  const index = Math.min(CULTIVATION_TITLES.length - 1, Math.floor((Math.max(1, level) - 1) * CULTIVATION_TITLES.length / 99));
+  return CULTIVATION_TITLES[index] ?? CULTIVATION_TITLES[0];
+}
+
+export function normalizeViewerCommand(message: string): string | undefined {
+  const raw = message.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/\s+/)[0]?.replace(/^!/, "").toLowerCase();
+  if (!raw) return undefined;
+  return ({ may: "cam", camera: "cam", vui: "party", chao: "hello" } as Record<string, string>)[raw] ?? raw;
 }
 
 export class LiveRuntime {
@@ -197,9 +208,26 @@ export class LiveRuntime {
   #commandCooldowns = new Map<string, number>();
   #startedAt = Date.now();
   #speechQueueDepth = 0;
+  #progressFile: string;
+  #persistTimer?: NodeJS.Timeout;
 
   constructor(private readonly options: LiveRuntimeOptions) {
     this.#config = options.config;
+    this.#progressFile = path.join(options.dataDirectory, "viewer-progress.json");
+  }
+
+  async initialize(): Promise<void> {
+    try {
+      const input = JSON.parse(await fs.readFile(this.#progressFile, "utf8")) as unknown;
+      const records = z.array(z.object({ id: z.string().min(1).max(160), name: z.string().min(1).max(100), avatar: z.string().max(2_048).optional(), xp: z.number().min(0), gifts: z.number().min(0), likes: z.number().min(0), messages: z.number().int().min(0), followed: z.boolean(), lastSeen: z.string().datetime() })).max(10_000).parse(input);
+      for (const record of records) {
+        const level = levelForXp(record.xp);
+        this.#viewers.set(record.id, { ...record, level, title: titleForLevel(level) });
+      }
+      this.options.logger.info("viewer_progress.loaded", { viewers: this.#viewers.size });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") this.options.logger.warn("viewer_progress.load_failed", { message: error instanceof Error ? error.message : String(error) });
+    }
   }
 
   updateConfig(config: AppConfig): void {
@@ -321,6 +349,15 @@ export class LiveRuntime {
 
   shutdown(): void {
     this.stop();
+    if (this.#persistTimer) clearTimeout(this.#persistTimer);
+    this.#persistTimer = undefined;
+    void this.persistProgress();
+  }
+
+  async flushProgress(): Promise<void> {
+    if (this.#persistTimer) clearTimeout(this.#persistTimer);
+    this.#persistTimer = undefined;
+    await this.persistProgress();
   }
 
   fake(input: unknown): LiveEvent {
@@ -571,6 +608,7 @@ export class LiveRuntime {
       record.title = titleForLevel(record.level);
       event.viewer = { id: record.id, name: record.name, level: record.level, title: record.title, ...(record.avatar ? { avatar: record.avatar } : {}) };
       this.#viewers.set(record.id, record);
+      this.scheduleProgressPersist();
       if (this.#viewers.size > 2_500) {
         const oldest = [...this.#viewers.values()].sort((a, b) => a.lastSeen.localeCompare(b.lastSeen)).slice(0, 250);
         for (const viewer of oldest) this.#viewers.delete(viewer.id);
@@ -588,7 +626,7 @@ export class LiveRuntime {
   }
 
   private command(message: string, viewer: ViewerRecord): { name: string; response: string } | undefined {
-    const command = message.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/\s+/)[0]?.replace(/^!/, "").toLowerCase();
+    const command = normalizeViewerCommand(message);
     if (!command) return undefined;
     const now = Date.now();
     const cooldownKey = `${viewer.id}:${command}`;
@@ -603,12 +641,13 @@ export class LiveRuntime {
       return { name: "rank", response: rank > 0 ? `${viewer.name} đang xếp hạng #${rank}.` : `${viewer.name} chưa có thứ hạng.` };
     }
     if (command === "wish") return { name: "wish", response: message.replace(/^!?wish\s*/i, "").slice(0, 160) || "Chúc mọi người một buổi LIVE thật vui!" };
-    const stageCommands: Record<string, { name: string; response: string }> = {
-      hey: { name: "hey", response: `Chào ${viewer.name}!` }, quay: { name: "quay", response: "Camera đang lia quanh sân khấu." }, may: { name: "camera", response: `Camera đang focus ${viewer.name}.` },
-      chuc: { name: "wish", response: `Chúc ${viewer.name} một buổi LIVE vui vẻ!` }, nhay: { name: "dance", response: "Sân khấu bắt đầu nhảy!" }, vui: { name: "party", response: "Party mode đã bật!" },
-      tim: { name: "heart", response: "Tim đã thắp sáng sàn nhảy!" }, chao: { name: "hello", response: `Xin chào ${viewer.name}!` },
+    const stageCommands: Record<string, { toggle: keyof AppConfig["stage"]["commandToggles"]; name: string; response: string }> = {
+      hey: { toggle: "HEY", name: "hey", response: `Chào ${viewer.name}!` }, quay: { toggle: "QUAY", name: "quay", response: "Camera đang lia quanh sân khấu." }, cam: { toggle: "CAM", name: "camera", response: `Camera đang focus ${viewer.name}.` },
+      chuc: { toggle: "CHUC", name: "wish", response: `Chúc ${viewer.name} một buổi LIVE vui vẻ!` }, nhay: { toggle: "NHAY", name: "dance", response: "Sân khấu bắt đầu nhảy!" }, party: { toggle: "PARTY", name: "party", response: "Party mode đã bật!" },
+      tim: { toggle: "TIM", name: "heart", response: "Tim đã thắp sáng sàn nhảy!" }, hello: { toggle: "HELLO", name: "hello", response: `Xin chào ${viewer.name}!` },
     };
-    if (command && stageCommands[command]) return stageCommands[command];
+    const stageCommand = stageCommands[command];
+    if (stageCommand && this.#config.stage.commandToggles[stageCommand.toggle] !== false) return { name: stageCommand.name, response: stageCommand.response };
     return undefined;
   }
 
@@ -617,6 +656,28 @@ export class LiveRuntime {
       .sort((a, b) => (b.gifts - a.gifts) || (b.likes - a.likes) || (b.xp - a.xp))
       .slice(0, 10)
       .map((viewer) => ({ ...viewer }));
+  }
+
+  private scheduleProgressPersist(): void {
+    if (this.#persistTimer) return;
+    this.#persistTimer = setTimeout(() => {
+      this.#persistTimer = undefined;
+      void this.persistProgress();
+    }, 750);
+    this.#persistTimer.unref();
+  }
+
+  private async persistProgress(): Promise<void> {
+    try {
+      const records = [...this.#viewers.values()].map(({ id, name, avatar, xp, gifts, likes, messages, followed, lastSeen }) => ({ id, name, ...(avatar ? { avatar } : {}), xp, gifts, likes, messages, followed, lastSeen }));
+      await fs.mkdir(path.dirname(this.#progressFile), { recursive: true });
+      const temporary = `${this.#progressFile}.${process.pid}.tmp`;
+      await fs.writeFile(temporary, `${JSON.stringify(records)}\n`, "utf8");
+      await fs.rm(this.#progressFile, { force: true });
+      await fs.rename(temporary, this.#progressFile);
+    } catch (error) {
+      this.options.logger.warn("viewer_progress.save_failed", { message: error instanceof Error ? error.message : String(error) });
+    }
   }
 
   private toStageViewer(viewer: ViewerRecord): Record<string, unknown> {

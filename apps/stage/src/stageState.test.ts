@@ -14,6 +14,7 @@ describe('stage event reducer', () => {
     expect(state.leaderboard[0]).toBe('luna');
     expect(state.gifts[0].superGift).toBe(true);
     expect(state.spotlightViewer?.name).toBe('Luna');
+    expect(state.viewers.luna).toMatchObject({ motion: 'gift', motionUntil: 8_100 });
   });
 
   it('supports the nested gift envelope used by Main', () => {

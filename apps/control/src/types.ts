@@ -62,6 +62,11 @@ export interface AppConfig {
     lasers: boolean;
     ledScreens: boolean;
     topPodiums: boolean;
+    autoFitCrowd: boolean;
+    maxFloorActors: number;
+    floorWidth: number;
+    commandBoardEnabled: boolean;
+    commandToggles: Record<'HEY' | 'QUAY' | 'CAM' | 'CHUC' | 'NHAY' | 'PARTY' | 'TIM' | 'HELLO', boolean>;
   };
   characters: {
     enabled: boolean;

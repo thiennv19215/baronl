@@ -33,6 +33,11 @@ export const defaultConfig: AppConfig = {
     lasers: true,
     ledScreens: true,
     topPodiums: true,
+    autoFitCrowd: true,
+    maxFloorActors: 50,
+    floorWidth: 100,
+    commandBoardEnabled: true,
+    commandToggles: { HEY: true, QUAY: true, CAM: true, CHUC: true, NHAY: true, PARTY: true, TIM: true, HELLO: true },
   },
   characters: {
     enabled: true,

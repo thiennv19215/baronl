@@ -409,6 +409,16 @@ function CustomizeScreen({ config, patch, notify }: ScreenProps & { notify: (mes
         <Toggle checked={stage.lasers} onChange={(lasers) => void patch('stage', { lasers })} label="Laser & spotlight"/>
         <Toggle checked={stage.ledScreens} onChange={(ledScreens) => void patch('stage', { ledScreens })} label="Màn LED 3D"/>
         <Toggle checked={stage.topPodiums} onChange={(topPodiums) => void patch('stage', { topPodiums })} label="Bục TOP 1 / 2 / 3"/>
+        <Toggle checked={stage.autoFitCrowd} onChange={(autoFitCrowd) => void patch('stage', { autoFitCrowd })} label="Tự giãn khi đông" description="Tự thêm hàng, thu nhỏ nhân vật và giữ người mới/TOP trên sàn."/>
+        <div className="form-grid">
+          <Field label={`Số nhân vật tối đa · ${stage.maxFloorActors}`}><input type="range" min="8" max="80" step="1" value={stage.maxFloorActors} onChange={(event) => void patch('stage', { maxFloorActors: Number(event.target.value) })}/></Field>
+          <Field label={`Độ rộng sàn · ${stage.floorWidth}%`}><input type="range" min="80" max="110" step="1" value={stage.floorWidth} onChange={(event) => void patch('stage', { floorWidth: Number(event.target.value) })}/></Field>
+        </div>
+      </Card>
+      <Card>
+        <CardTitle title="Lệnh người xem" hint="Tương thích bộ lệnh của Quán Bar Online."/>
+        <Toggle checked={stage.commandBoardEnabled} onChange={(commandBoardEnabled) => void patch('stage', { commandBoardEnabled })} label="Hiện bảng lệnh trên Stage"/>
+        <div className="toggle-grid command-toggle-grid">{(['HEY','QUAY','CAM','CHUC','NHAY','PARTY','TIM','HELLO'] as const).map((command) => <Toggle key={command} checked={stage.commandToggles[command]} onChange={(enabled) => void patch('stage', { commandToggles: { ...stage.commandToggles, [command]: enabled } })} label={command}/>)}</div>
       </Card>
     </div>
     <Card className="span-2">

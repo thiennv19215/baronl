@@ -29,6 +29,11 @@ export const initialStageState: StageState = {
     lasers: true,
     ledScreens: true,
     topPodiums: true,
+    autoFitCrowd: true,
+    maxFloorActors: 50,
+    floorWidth: 100,
+    commandBoardEnabled: true,
+    commandToggles: { HEY: true, QUAY: true, CAM: true, CHUC: true, NHAY: true, PARTY: true, TIM: true, HELLO: true },
   },
   characters: {
     enabled: true,
@@ -88,6 +93,8 @@ function viewerFrom(payload: UnknownRecord, current?: StageViewer): StageViewer 
     gifts: Math.max(0, asNumber(user.gifts, current?.gifts ?? 0)),
     likes: Math.max(0, asNumber(user.likes, current?.likes ?? 0)),
     badge: asString(user.badge ?? user.title ?? payload.badge, current?.badge),
+    motion: current?.motion,
+    motionUntil: current?.motionUntil,
   };
 }
 
@@ -213,25 +220,29 @@ export function stageReducer(state: StageState, action: StageAction): StageState
 
   if (type === 'join') {
     const { viewer, viewers } = withViewer(state, payload);
+    viewer.motion = 'enter'; viewer.motionUntil = timestamp + 4_000;
     const chat: ChatItem = { id: eventId('join', timestamp, viewer.id), viewer, message: 'vừa đáp xuống sân khấu', kind: 'join', createdAt: timestamp };
     return { ...state, viewers, viewerCount: Math.max(state.viewerCount, Object.keys(viewers).length), chats: addChat(state, chat), spotlightViewer: viewer };
   }
   if (type === 'chat') {
     const { viewer, viewers } = withViewer(state, payload, 1);
+    viewer.motion = 'wave'; viewer.motionUntil = timestamp + 3_000;
     const message = asString(payload.message ?? payload.comment ?? payload.text).slice(0, 180);
     if (!message) return { ...state, viewers };
     const chat: ChatItem = { id: eventId('chat', timestamp, viewer.id), viewer, message, kind: 'chat', createdAt: timestamp };
     const command = isRecord(payload.command) ? asString(payload.command.name).toLowerCase().slice(0, 32) : '';
-    return { ...state, viewers, chats: addChat(state, chat), leaderboard: calculateLeaderboard(viewers), stageCommand: command ? { name: command, until: timestamp + 6_000 } : state.stageCommand };
+    return { ...state, viewers, chats: addChat(state, chat), leaderboard: calculateLeaderboard(viewers), stageCommand: command ? { name: command, viewerId: viewer.id, until: timestamp + 6_000 } : state.stageCommand };
   }
   if (type === 'follow') {
     const { viewer, viewers } = withViewer(state, payload, 15);
+    viewer.motion = 'cheer'; viewer.motionUntil = timestamp + 4_500;
     const chat: ChatItem = { id: eventId('follow', timestamp, viewer.id), viewer, message: 'đã theo dõi kênh', kind: 'follow', createdAt: timestamp };
     return { ...state, viewers, chats: addChat(state, chat), spotlightViewer: viewer, leaderboard: calculateLeaderboard(viewers) };
   }
   if (type === 'like') {
     const count = Math.max(1, asNumber(payload.likeCount ?? payload.count ?? payload.likes, 1));
     const { viewer, viewers } = withViewer(state, payload, Math.ceil(count / 10), 0, count);
+    viewer.motion = 'heart'; viewer.motionUntil = timestamp + 2_800;
     return { ...state, viewers, sessionLikes: state.sessionLikes + count, leaderboard: calculateLeaderboard(viewers) };
   }
   if (type === 'gift') {
@@ -240,6 +251,7 @@ export function stageReducer(state: StageState, action: StageAction): StageState
     const diamondsPerEvent = asNumber(payload.diamonds ?? payload.diamondCount ?? payload.value ?? nestedGift.diamonds, 0);
     const diamonds = Math.max(0, diamondsPerEvent * (payload.diamonds != null || nestedGift.diamonds != null ? 1 : count));
     const { viewer, viewers } = withViewer(state, payload, Math.max(diamonds, count * 10), count);
+    viewer.motion = 'gift'; viewer.motionUntil = timestamp + (diamonds >= 1_000 ? 8_000 : 5_000);
     const gift: GiftEffect = {
       id: asString(payload.id, eventId('gift', timestamp, viewer.id)).slice(0, 256), viewer,
       giftName: asString(payload.giftName ?? payload.name ?? nestedGift.name, 'Món quà bí ẩn').slice(0, 60),

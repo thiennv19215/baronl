@@ -469,6 +469,7 @@ async function bootstrap(): Promise<void> {
 
   liveRuntime = new LiveRuntime({
     config: currentConfig,
+    dataDirectory,
     logger,
     stageUrl: () => stageUrl("obs"),
     onEvent: emitRuntime,
@@ -477,6 +478,7 @@ async function bootstrap(): Promise<void> {
       return currentConfig;
     }
   });
+  await liveRuntime.initialize();
   localServer = new LocalStageServer({
     stageRoot: paths.stageRoot,
     assetRoot: paths.packagedAssets,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { getWebSocketUrl, initials, initialStageState, normalizeEnvelope, stageReducer } from './stageState';
 import { ThreeStage } from './ThreeStage';
 import type { GiftEffect, StageAction, StageConnection, StageEventEnvelope, StageState, StageViewer } from './types';
@@ -192,6 +192,7 @@ function safeMediaSource(source: string): string | undefined {
 }
 
 function App() {
+  const [audioEnergy, setAudioEnergy] = useState(0);
   const [state, dispatch] = useReducer(stageReducer, initialStageState, (initial) => {
     const quality = requestedQuality === 'low' || requestedQuality === 'high' || requestedQuality === 'balanced' ? requestedQuality : initial.appearance.effectQuality;
     return { ...initial, appearance: { ...initial.appearance, transparent: forceTransparent || initial.appearance.transparent, effectQuality: quality } };
@@ -212,6 +213,8 @@ function App() {
   const backgroundStyle = state.appearance.backgroundType === 'image' && backgroundSource ? { backgroundImage: `url("${backgroundSource.replaceAll('"', '%22')}")` } : undefined;
   const quality = state.appearance.effectQuality;
   const activeCommand = state.stageCommand?.until && state.stageCommand.until > Date.now() ? state.stageCommand.name : undefined;
+  const commandViewerId = activeCommand ? state.stageCommand?.viewerId : undefined;
+  const commandFocusX = commandViewerId ? ((stableHash(commandViewerId) % 1000) / 999 - .5) * 8 : 0;
   const dismissWish = useCallback((id: string) => {
     dispatch({ type: 'event', event: { type: 'wish:remove', payload: { id } } });
     const facade = window.orbitStage;
@@ -224,8 +227,9 @@ function App() {
   return <main className={`stage-viewport quality-${quality} ${state.appearance.transparent ? 'transparent' : ''}`}>
     <section className={`stage theme-${state.appearance.theme} ${state.appearance.threeDEnabled ? 'dance-floor-mode' : ''}`} style={backgroundStyle} aria-label="Sân khấu OrbitStage LIVE">
       {state.appearance.backgroundType === 'video' && backgroundSource && <video className="stage-video" src={backgroundSource} autoPlay muted loop playsInline/>}
-      {state.appearance.threeDEnabled && <ThreeStage quality={quality} live={state.live} musicPlaying={state.music.playing} speaking={Boolean(state.speech)} theme={state.appearance.theme} command={activeCommand} leaderCount={Math.min(3, leaders.length)} giftActive={Boolean(currentGift && Date.now() - currentGift.createdAt < 7000)} settings={{ cameraMode: state.appearance.cameraMode, floorBright: state.appearance.floorBright, lasers: state.appearance.lasers, ledScreens: state.appearance.ledScreens, topPodiums: state.appearance.topPodiums }}/>} 
-      {state.appearance.threeDEnabled && <DanceFloorActors viewers={Object.values(state.viewers)} command={activeCommand}/>} 
+      {state.appearance.threeDEnabled && <ThreeStage quality={quality} live={state.live} musicPlaying={state.music.playing} audioEnergy={audioEnergy} speaking={Boolean(state.speech)} theme={state.appearance.theme} command={activeCommand} focusX={commandFocusX} leaderCount={Math.min(3, leaders.length)} giftActive={Boolean(currentGift && Date.now() - currentGift.createdAt < 7000)} settings={{ cameraMode: state.appearance.cameraMode, floorBright: state.appearance.floorBright, lasers: state.appearance.lasers, ledScreens: state.appearance.ledScreens, topPodiums: state.appearance.topPodiums }}/>}
+      {state.appearance.threeDEnabled && <DanceFloorActors viewers={Object.values(state.viewers)} command={activeCommand} settings={state.appearance}/>}
+      {state.appearance.commandBoardEnabled && <ViewerCommandBoard toggles={state.appearance.commandToggles} active={activeCommand}/>}
       <div className="stage-vignette"/>
       <div className="nebula-cloud cloud-a"/><div className="nebula-cloud cloud-b"/>
       {quality !== 'low' && <StarField quality={quality}/>} 
@@ -260,20 +264,59 @@ function App() {
 
       {state.aiCaption && <div className="ai-caption"><span>✦</span><p><small>{state.aiCaption.source || 'AI MC'}</small><strong>{state.aiCaption.text}</strong></p></div>}
 
-      <MusicAudio music={state.music} owner={params.get('audio') === '1' || state.audioOwner === true}/>
+      <MusicAudio music={state.music} owner={params.get('audio') === '1' || state.audioOwner === true} onEnergy={setAudioEnergy}/>
 
       {state.connection !== 'connected' && <ConnectionNotice state={state.connection}/>} 
     </section>
   </main>;
 }
 
-function MusicAudio({ music, owner }: { music: StageState['music']; owner: boolean }) {
+function MusicAudio({ music, owner, onEnergy }: { music: StageState['music']; owner: boolean; onEnergy: (energy: number) => void }) {
   const ref = useRef<HTMLAudioElement>(null);
+  const audioContextRef = useRef<AudioContext>();
+  useEffect(() => {
+    const audio = ref.current;
+    if (!audio || !owner) { onEnergy(0); return; }
+    const context = new AudioContext();
+    const analyser = context.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = .82;
+    const source = context.createMediaElementSource(audio);
+    source.connect(analyser);
+    analyser.connect(context.destination);
+    audioContextRef.current = context;
+    const bins = new Uint8Array(analyser.frequencyBinCount);
+    let frame = 0;
+    let lastUpdate = 0;
+    const sample = (now: number) => {
+      analyser.getByteFrequencyData(bins);
+      if (now - lastUpdate > 80) {
+        let total = 0;
+        const audibleBins = Math.ceil(bins.length * .58);
+        for (let index = 0; index < audibleBins; index += 1) total += bins[index] ?? 0;
+        onEnergy(Math.min(1, (total / audibleBins / 255) * 2.15));
+        lastUpdate = now;
+      }
+      frame = requestAnimationFrame(sample);
+    };
+    frame = requestAnimationFrame(sample);
+    return () => {
+      cancelAnimationFrame(frame);
+      source.disconnect();
+      analyser.disconnect();
+      audioContextRef.current = undefined;
+      void context.close();
+      onEnergy(0);
+    };
+  }, [onEnergy, owner]);
   useEffect(() => {
     const audio = ref.current;
     if (!audio) return;
     audio.volume = Math.max(0, Math.min(1, music.volume / 100));
-    if (owner && music.playing && music.source) void audio.play().catch(() => undefined);
+    if (owner && music.playing && music.source) {
+      void audioContextRef.current?.resume();
+      void audio.play().catch(() => undefined);
+    }
     else audio.pause();
   }, [music.playing, music.source, music.volume, owner]);
   return <audio ref={ref} src={safeMediaSource(music.source ?? '')} loop preload="auto" data-audio-owner={owner ? 'stage' : 'main'}/>;
@@ -302,23 +345,53 @@ function stableHash(value: string): number {
   return hash >>> 0;
 }
 
-function DanceFloorActors({ viewers, command }: { viewers: StageViewer[]; command?: string }) {
-  const actors = useMemo(() => viewers.slice(0, 24).map((viewer, index) => {
+function DanceFloorActors({ viewers, command, settings }: { viewers: StageViewer[]; command?: string; settings: StageState['appearance'] }) {
+  const actors = useMemo(() => {
+    const maxActors = Math.max(8, Math.min(80, settings.maxFloorActors));
+    const ranked = [...viewers].sort((a, b) => b.gifts - a.gifts || b.points - a.points || b.likes - a.likes);
+    const preferred = [...ranked.slice(0, Math.min(10, maxActors)), ...[...viewers].reverse()];
+    const selectedIds = new Set(preferred.slice(0, maxActors).map((viewer) => viewer.id));
+    const selected = viewers.filter((viewer) => selectedIds.has(viewer.id));
+    const count = selected.length;
+    const columns = settings.autoFitCrowd ? Math.max(3, Math.min(8, Math.ceil(Math.sqrt(Math.max(1, count) * 1.35)))) : 5;
+    const rows = Math.max(1, Math.ceil(count / columns));
+    const density = settings.autoFitCrowd ? count <= 10 ? 1.1 : count <= 24 ? .92 : count <= 40 ? .76 : .64 : 1;
+    const vipRanks = new Map(ranked.slice(0, 3).map((viewer, index) => [viewer.id, index + 1]));
+    return selected.map((viewer, index) => {
     const hash = stableHash(viewer.id);
     const spriteIndex = hash % danceSprites.length;
-    const row = Math.floor(index / 5);
-    const column = index % 5;
-    const jitterX = ((hash >>> 8) % 13) - 6;
-    const jitterY = ((hash >>> 16) % 7) - 3;
-    return { viewer, frames: danceSprites[spriteIndex] ?? 17, sprite: spriteIndex + 1, left: Math.max(4, Math.min(96, 6 + column * 22 + jitterX)), top: Math.max(3, Math.min(90, 6 + row * 18 + jitterY)), delay: -((hash % 1400) / 1000) };
-  }), [viewers]);
-  return <div className={`dance-floor-actors ${command === 'dance' || command === 'party' ? 'party' : ''}`}>
-    {actors.map(({ viewer, frames, sprite, left, top, delay }) => {
-      const style = { left: `${left}%`, top: `${top}%`, zIndex: Math.round(top), '--actor-scale': .66 + (top / 100) * .58, '--actor-delay': `${delay}s` } as React.CSSProperties;
-      const spriteStyle = { backgroundImage: `url("${projectAssetRoot}/avatars/dance/char-${String(sprite).padStart(2, '0')}-sheet.png")`, backgroundSize: `${frames * 100}% 100%`, animationTimingFunction: `steps(${frames})` } as React.CSSProperties;
-      return <div className="floor-actor" style={style} key={viewer.id}><span className="floor-actor-name"><b>{viewer.name}</b><small>LV.{viewer.level}</small></span><i className="floor-actor-shadow"/><span className="floor-actor-sprite" style={spriteStyle}/></div>;
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+    const rowCount = row === rows - 1 ? count - row * columns : columns;
+    const centeredColumn = column + (columns - rowCount) / 2;
+    const jitterX = settings.autoFitCrowd ? (((hash >>> 8) % 7) - 3) * Math.max(.35, 1 - count / 80) : ((hash >>> 8) % 13) - 6;
+    const jitterY = settings.autoFitCrowd ? (((hash >>> 16) % 5) - 2) * .6 : ((hash >>> 16) % 7) - 3;
+    const left = columns === 1 ? 50 : 5 + centeredColumn * (90 / Math.max(1, columns - 1)) + jitterX;
+    const top = rows === 1 ? 48 : 6 + row * (86 / Math.max(1, rows - 1)) + jitterY;
+    const vipRank = vipRanks.get(viewer.id);
+    const vipFrames = vipRank === 1 ? 34 : vipRank ? 17 : undefined;
+    return { viewer, frames: vipFrames ?? danceSprites[spriteIndex] ?? 17, sprite: spriteIndex + 1, vipRank, left: Math.max(3, Math.min(97, left)), top: Math.max(3, Math.min(92, top)), delay: -((hash % 1400) / 1000), density, wanderX: ((((hash >>> 3) % 9) - 4) * .42 * density), wanderY: ((((hash >>> 12) % 5) + 1) * .24 * density), wanderDuration: 4.8 + (hash % 32) / 10 };
+    });
+  }, [settings.autoFitCrowd, settings.maxFloorActors, viewers]);
+  const edge = (100 - settings.floorWidth) / 2;
+  return <div className={`dance-floor-actors ${command === 'dance' || command === 'party' ? 'party' : ''}`} style={{ left: `${edge}%`, right: `${edge}%` }}>
+    {actors.map(({ viewer, frames, sprite, vipRank, left, top, delay, density, wanderX, wanderY, wanderDuration }) => {
+      const style = { left: `${left}%`, top: `${top}%`, zIndex: Math.round(top), '--actor-scale': (.66 + (top / 100) * .58) * density, '--actor-delay': `${delay}s`, '--wander-x': `${wanderX}cqw`, '--wander-y': `${wanderY}cqw`, '--wander-duration': `${wanderDuration}s` } as React.CSSProperties;
+      const spriteFile = vipRank ? `vip${vipRank}-sheet.png` : `char-${String(sprite).padStart(2, '0')}-sheet.png`;
+      const spriteStyle = { backgroundImage: `url("${projectAssetRoot}/avatars/dance/${spriteFile}")`, backgroundSize: `${frames * 100}% 100%`, animationTimingFunction: `steps(${frames})` } as React.CSSProperties;
+      const wingFile = vipRank ? `top${vipRank}.png` : viewer.level >= 25 ? 'canh3.png' : undefined;
+      const wingStyle = wingFile ? { backgroundImage: `url("${projectAssetRoot}/fx/dance/${wingFile}")` } : undefined;
+      const motion = viewer.motionUntil && viewer.motionUntil > Date.now() ? viewer.motion : undefined;
+      return <div className={`floor-actor ${vipRank ? `vip vip-${vipRank}` : ''} ${motion ? `motion-${motion}` : ''}`} style={style} key={viewer.id}>{wingStyle && <i className="floor-actor-wings" style={wingStyle}/>}<span className="floor-actor-name">{vipRank && <em>TOP {vipRank}</em>}<b>{viewer.name}</b><small>LV.{viewer.level}</small></span><i className="floor-actor-emote">{motion === 'gift' ? '◆' : motion === 'heart' ? '♥' : motion === 'cheer' ? '★' : motion === 'wave' ? '👋' : motion === 'enter' ? '✦' : ''}</i><i className="floor-actor-shadow"/><span className="floor-actor-sprite" style={spriteStyle}/></div>;
     })}
   </div>;
+}
+
+const commandLabels = ['HEY', 'QUAY', 'CAM', 'CHUC', 'NHAY', 'PARTY', 'TIM', 'HELLO'] as const;
+const commandActions: Record<string, string> = { hey: 'HEY', quay: 'QUAY', camera: 'CAM', wish: 'CHUC', dance: 'NHAY', party: 'PARTY', heart: 'TIM', hello: 'HELLO' };
+
+function ViewerCommandBoard({ toggles, active }: { toggles: StageState['appearance']['commandToggles']; active?: string }) {
+  return <aside className="viewer-command-board"><strong>LỆNH SÀN NHẢY</strong><div>{commandLabels.map((command) => <span key={command} className={`${toggles[command] === false ? 'disabled' : ''} ${commandActions[active ?? ''] === command ? 'active' : ''}`}>{command}</span>)}</div></aside>;
 }
 
 function Avatar({ viewer, style }: { viewer: StageViewer; style: StageState['appearance']['avatarStyle'] }) {
@@ -345,8 +418,10 @@ function GiftCelebration({ gift, showWish, onDismissWish }: { gift: GiftEffect; 
 }
 
 function Character({ name, role, variant, speaking, blink }: { name: string; role: string; variant: 'nova' | 'echo'; speaking: boolean; blink: boolean }) {
-  return <div className={`stage-character ${variant} ${speaking ? 'speaking' : ''} ${blink ? 'blink' : ''}`}>
-    <div className="character-aura"><i/><i/></div><div className="character-hair back"/><div className="character-neck"/><div className="character-body"><i/><i/><b/></div><div className="character-face"><i className="ear left"/><i className="ear right"/><span className="eye left"><b/></span><span className="eye right"><b/></span><span className="nose"/><span className="mouth"/></div><div className="character-hair front"><i/><i/><i/></div><div className="headset"><i/><span/></div><div className="host-name"><small>{role}</small><strong>{name}</strong><i/></div>
+  const host = variant === 'nova' ? 'luna' : 'ryan';
+  const state = speaking ? 'open' : 'closed';
+  return <div className={`stage-character art-host ${variant} ${speaking ? 'speaking' : ''} ${blink ? 'blink-enabled' : ''}`}>
+    <div className="character-aura"><i/><i/></div><img className="host-art base-art" src={`${projectAssetRoot}/dual-host/${host}/${state}.png`} alt=""/>{blink && <img className="host-art blink-art" src={`${projectAssetRoot}/dual-host/${host}/blink.png`} alt=""/>}<div className="host-name"><small>{role}</small><strong>{name}</strong><i/></div>
   </div>;
 }
 

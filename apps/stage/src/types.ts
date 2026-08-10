@@ -10,6 +10,8 @@ export interface StageViewer {
   gifts: number;
   likes: number;
   badge?: string;
+  motion?: 'enter' | 'wave' | 'cheer' | 'heart' | 'gift';
+  motionUntil?: number;
 }
 
 export interface ChatItem {
@@ -57,6 +59,11 @@ export interface StageAppearance {
   lasers: boolean;
   ledScreens: boolean;
   topPodiums: boolean;
+  autoFitCrowd: boolean;
+  maxFloorActors: number;
+  floorWidth: number;
+  commandBoardEnabled: boolean;
+  commandToggles: Record<'HEY' | 'QUAY' | 'CAM' | 'CHUC' | 'NHAY' | 'PARTY' | 'TIM' | 'HELLO', boolean>;
 }
 
 export interface StageState {
@@ -76,7 +83,7 @@ export interface StageState {
   sessionLikes: number;
   speech?: { host: 'a' | 'b'; text?: string; until?: number };
   aiCaption?: { text: string; source?: string; until: number };
-  stageCommand?: { name: string; until: number };
+  stageCommand?: { name: string; viewerId?: string; until: number };
   audioOwner?: boolean;
 }
 

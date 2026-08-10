@@ -46,6 +46,14 @@ export const appConfigSchema = z.object({
     lasers: z.boolean().default(true),
     ledScreens: z.boolean().default(true),
     topPodiums: z.boolean().default(true),
+    autoFitCrowd: z.boolean().default(true),
+    maxFloorActors: z.number().int().min(8).max(80).default(50),
+    floorWidth: z.number().int().min(80).max(110).default(100),
+    commandBoardEnabled: z.boolean().default(true),
+    commandToggles: z.object({
+      HEY: z.boolean().default(true), QUAY: z.boolean().default(true), CAM: z.boolean().default(true), CHUC: z.boolean().default(true),
+      NHAY: z.boolean().default(true), PARTY: z.boolean().default(true), TIM: z.boolean().default(true), HELLO: z.boolean().default(true)
+    }).default({ HEY: true, QUAY: true, CAM: true, CHUC: true, NHAY: true, PARTY: true, TIM: true, HELLO: true }),
     audioOwner: z.enum(["stage-window", "obs"]).default("stage-window"),
   }),
   music: z.object({
