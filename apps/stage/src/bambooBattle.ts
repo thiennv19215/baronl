@@ -1,0 +1,152 @@
+import { normalizeEnvelope } from './stageState';
+import type { StageEventEnvelope } from './types';
+
+export type BambooTeam = 'green' | 'orange';
+export type BambooWinner = BambooTeam | 'draw';
+
+export interface BambooPlayer {
+  id: string;
+  name: string;
+  avatar?: string;
+  team: BambooTeam;
+  contribution: number;
+  likes: number;
+  gifts: number;
+  joinedAt: number;
+}
+
+export interface BambooBattleSettings {
+  roundSeconds: number;
+  autoRestart: boolean;
+  likePower: number;
+  giftPower: number;
+}
+
+export interface BambooBattleState {
+  status: 'waiting' | 'playing' | 'finished';
+  round: number;
+  startedAt: number;
+  endsAt: number;
+  remainingMs: number;
+  nextRoundAt?: number;
+  position: number;
+  winner?: BambooWinner;
+  players: Record<string, BambooPlayer>;
+  teams: Record<BambooTeam, { power: number; likes: number; gifts: number }>;
+  impact?: { id: string; team: BambooTeam; kind: 'join' | 'like' | 'gift'; name: string; label: string; power: number; at: number };
+  settings: BambooBattleSettings;
+}
+
+export type BambooBattleAction =
+  | { type: 'configure'; settings: Partial<BambooBattleSettings> }
+  | { type: 'start'; now: number }
+  | { type: 'tick'; now: number }
+  | { type: 'event'; event: StageEventEnvelope };
+
+const defaultSettings: BambooBattleSettings = { roundSeconds: 60, autoRestart: true, likePower: 0.08, giftPower: 0.8 };
+const emptyTeams = (): BambooBattleState['teams'] => ({ green: { power: 0, likes: 0, gifts: 0 }, orange: { power: 0, likes: 0, gifts: 0 } });
+const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+const numberValue = (value: unknown, fallback = 0): number => {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+const stringValue = (value: unknown, fallback = ''): string => typeof value === 'string' ? value : value == null ? fallback : String(value);
+const safeId = (value: string): string => value.trim().toLowerCase().replace(/[^a-z0-9_.-]+/g, '-') || 'guest';
+
+export function createInitialBambooState(): BambooBattleState {
+  return { status: 'waiting', round: 0, startedAt: 0, endsAt: 0, remainingMs: defaultSettings.roundSeconds * 1_000, position: 0, players: {}, teams: emptyTeams(), settings: { ...defaultSettings } };
+}
+
+function beginRound(state: BambooBattleState, now: number): BambooBattleState {
+  const duration = clamp(Math.round(state.settings.roundSeconds), 30, 300) * 1_000;
+  return { ...state, status: 'playing', round: state.round + 1, startedAt: now, endsAt: now + duration, remainingMs: duration, nextRoundAt: undefined, position: 0, winner: undefined, players: {}, teams: emptyTeams(), impact: undefined };
+}
+
+function teamFromComment(message: string): BambooTeam | undefined {
+  const command = message.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/)[0]?.replace(/^#/, '');
+  if (['1', 'xanh', 'green', 'phe1', 'team1'].includes(command ?? '')) return 'green';
+  if (['2', 'cam', 'orange', 'phe2', 'team2'].includes(command ?? '')) return 'orange';
+  return undefined;
+}
+
+function eventViewer(payload: Record<string, unknown>): { id: string; name: string; avatar?: string } {
+  const viewer = Object.keys(record(payload.viewer)).length ? record(payload.viewer) : Object.keys(record(payload.user)).length ? record(payload.user) : payload;
+  const name = stringValue(viewer.name ?? viewer.nickname ?? viewer.displayName ?? payload.nickname ?? payload.uniqueId, 'Khách LIVE').slice(0, 48);
+  const id = safeId(stringValue(viewer.id ?? viewer.userId ?? viewer.uniqueId ?? payload.userId ?? payload.uniqueId, name));
+  const avatar = stringValue(viewer.avatar ?? viewer.avatarUrl ?? viewer.profilePictureUrl ?? payload.avatar ?? payload.profilePictureUrl).slice(0, 2_048);
+  return { id, name, ...(avatar ? { avatar } : {}) };
+}
+
+function addPower(state: BambooBattleState, player: BambooPlayer, kind: 'like' | 'gift', amount: number, likes: number, gifts: number, label: string, timestamp: number): BambooBattleState {
+  const direction = player.team === 'green' ? 1 : -1;
+  const push = clamp(amount / 5, 0.4, 18);
+  const updatedPlayer = { ...player, contribution: player.contribution + amount, likes: player.likes + likes, gifts: player.gifts + gifts };
+  const teamStats = state.teams[player.team];
+  return {
+    ...state,
+    position: clamp(state.position + direction * push, -46, 46),
+    players: { ...state.players, [player.id]: updatedPlayer },
+    teams: { ...state.teams, [player.team]: { power: teamStats.power + amount, likes: teamStats.likes + likes, gifts: teamStats.gifts + gifts } },
+    impact: { id: `${timestamp}-${player.id}-${kind}`, team: player.team, kind, name: player.name, label, power: amount, at: timestamp },
+  };
+}
+
+export function bambooBattleReducer(state: BambooBattleState, action: BambooBattleAction): BambooBattleState {
+  if (action.type === 'configure') {
+    const settings = {
+      roundSeconds: clamp(Math.round(action.settings.roundSeconds ?? state.settings.roundSeconds), 30, 300),
+      autoRestart: action.settings.autoRestart ?? state.settings.autoRestart,
+      likePower: clamp(action.settings.likePower ?? state.settings.likePower, 0.01, 2),
+      giftPower: clamp(action.settings.giftPower ?? state.settings.giftPower, 0.1, 5),
+    };
+    return { ...state, settings, ...(state.status === 'waiting' ? { remainingMs: settings.roundSeconds * 1_000 } : {}) };
+  }
+  if (action.type === 'start') return beginRound(state, action.now);
+  if (action.type === 'tick') {
+    if (state.status === 'finished' && state.settings.autoRestart && state.nextRoundAt && action.now >= state.nextRoundAt) return beginRound(state, action.now);
+    if (state.status !== 'playing') return state;
+    const remainingMs = Math.max(0, state.endsAt - action.now);
+    if (remainingMs > 0) return { ...state, remainingMs, impact: state.impact && action.now - state.impact.at > 4_000 ? undefined : state.impact };
+    const winner: BambooWinner = Math.abs(state.position) < 0.5 ? 'draw' : state.position > 0 ? 'green' : 'orange';
+    return { ...state, status: 'finished', remainingMs: 0, winner, nextRoundAt: state.settings.autoRestart ? action.now + 8_000 : undefined, impact: undefined };
+  }
+
+  const normalized = normalizeEnvelope(action.event);
+  if (normalized.type === 'game_action' && normalized.payload.action === 'restart') return beginRound(state, normalized.timestamp);
+  if (state.status === 'waiting') return bambooBattleReducer(beginRound(state, normalized.timestamp), action);
+  if (state.status !== 'playing') return state;
+  const { type, payload, timestamp } = normalized;
+  if (!['chat', 'like', 'gift'].includes(type)) return state;
+  const viewer = eventViewer(payload);
+  const player = state.players[viewer.id];
+
+  if (type === 'chat') {
+    if (player) return state;
+    const team = teamFromComment(stringValue(payload.message ?? payload.comment ?? payload.text));
+    if (!team) return state;
+    const joined: BambooPlayer = { ...viewer, team, contribution: 3, likes: 0, gifts: 0, joinedAt: timestamp };
+    const teamStats = state.teams[team];
+    return {
+      ...state,
+      players: { ...state.players, [joined.id]: joined },
+      teams: { ...state.teams, [team]: { ...teamStats, power: teamStats.power + 3 } },
+      impact: { id: `${timestamp}-${joined.id}-join`, team, kind: 'join', name: joined.name, label: `vào phe ${team === 'green' ? 'Xanh' : 'Cam'}`, power: 3, at: timestamp },
+    };
+  }
+  if (!player) return state;
+  if (type === 'like') {
+    const count = Math.max(1, numberValue(payload.likeCount ?? payload.count ?? payload.likes, 1));
+    return addPower(state, player, 'like', Math.max(0.2, count * state.settings.likePower), count, 0, `${Math.round(count)} lượt thích`, timestamp);
+  }
+  const gift = record(payload.gift);
+  const count = Math.max(1, numberValue(payload.giftCount ?? payload.repeatCount ?? payload.count ?? gift.count, 1));
+  const diamonds = Math.max(0, numberValue(payload.diamonds ?? payload.diamondCount ?? gift.diamonds, 0));
+  const amount = Math.max(4, diamonds * count * state.settings.giftPower + count * 2);
+  const giftName = stringValue(payload.giftName ?? payload.name ?? gift.name, 'Quà TikTok').slice(0, 60);
+  return addPower(state, player, 'gift', amount, 0, count, `${giftName} ×${Math.round(count)}`, timestamp);
+}
+
+export function bambooTeamPlayers(state: BambooBattleState, team: BambooTeam): BambooPlayer[] {
+  return Object.values(state.players).filter((player) => player.team === team).sort((a, b) => b.contribution - a.contribution || a.joinedAt - b.joinedAt);
+}

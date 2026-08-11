@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { bridge } from './bridge';
 import { defaultConfig, defaultSnapshot, formatUptime, mergeConfig } from './lib/model';
 import type {
@@ -33,6 +33,7 @@ type IconName =
 const iconPaths: Record<IconName, ReactNode> = {
   live: <><circle cx="12" cy="12" r="2"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.2 4.2a11 11 0 0 0 0 15.6M19.8 4.2a11 11 0 0 1 0 15.6"/></>,
   led: <><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 9h2m3 0h2m3 0h1M7 13h10M7 16h6"/></>,
+  games: <><path d="M8 8h8a5 5 0 0 1 4.7 6.7l-1.1 3.1a2.2 2.2 0 0 1-3.7.8L14 16h-4l-1.9 2.6a2.2 2.2 0 0 1-3.7-.8l-1.1-3.1A5 5 0 0 1 8 8Z"/><path d="M8 11v4m-2-2h4m6-1h.01m2 2h.01"/></>,
   customize: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.5-1A1.7 1.7 0 0 0 4.3 7l-.1-.1L7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3V3h4v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></>,
   characters: <><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20a6 6 0 0 1 12 0M14 15a5 5 0 0 1 7 4.6"/></>,
   ai: <><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1"/><circle cx="12" cy="12" r="4"/></>,
@@ -62,6 +63,7 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 const navItems: { id: ScreenId; label: string; eyebrow: string }[] = [
   { id: 'live', label: 'Điều khiển LIVE', eyebrow: 'Trung tâm' },
   { id: 'led', label: 'LED sân khấu', eyebrow: 'Hiển thị' },
+  { id: 'games', label: 'Game', eyebrow: 'Trò chơi LIVE' },
   { id: 'customize', label: 'Tùy chỉnh', eyebrow: 'Giao diện' },
   { id: 'characters', label: 'Nhân vật', eyebrow: 'Host ảo' },
   { id: 'ai', label: 'AI MC / DJ', eyebrow: 'Tự động' },
@@ -71,6 +73,7 @@ const navItems: { id: ScreenId; label: string; eyebrow: string }[] = [
 const screenCopy: Record<ScreenId, { title: string; subtitle: string }> = {
   live: { title: 'Điều khiển LIVE', subtitle: 'Kết nối TikFinity, điều phối sân khấu và âm nhạc.' },
   led: { title: 'LED sân khấu', subtitle: 'Thiết kế thông điệp chuyển động cho livestream.' },
+  games: { title: 'Game', subtitle: 'Quản lý các trò chơi tương tác LIVE trong một khu vực riêng.' },
   customize: { title: 'Tùy chỉnh sân khấu', subtitle: 'Bố cục, nền, hiệu ứng và hệ thống người xem.' },
   characters: { title: 'Nhân vật', subtitle: 'Thiết lập MC, DJ và sân khấu hai host.' },
   ai: { title: 'AI MC / DJ', subtitle: 'Provider, persona, auto-hype và hàng đợi giọng nói.' },
@@ -224,6 +227,9 @@ function App() {
         {loading ? <LoadingState/> : <>
           {screen === 'live' && <LiveScreen config={config} runtime={runtime} patch={patchConfig} notify={notify}/>} 
           {screen === 'led' && <LedScreen config={config} patch={patchConfig}/>} 
+          {screen === 'games' && (
+            <GamesScreen config={config} patch={patchConfig} notify={notify} />
+          )}
           {screen === 'customize' && <CustomizeScreen config={config} patch={patchConfig} notify={notify}/>} 
           {screen === 'characters' && <CharactersScreen config={config} runtime={runtime} patch={patchConfig} notify={notify}/>} 
           {screen === 'ai' && <AiScreen config={config} patch={patchConfig} notify={notify}/>} 
@@ -340,6 +346,158 @@ function LedScreen({ config, patch }: ScreenProps) {
   </div>;
 }
 
+const gameCatalog = [
+  {
+    id: 'dance-floor',
+    order: 'GAME 01',
+    title: 'Sàn nhảy tương tác',
+    description: 'Sân khấu hiện tại với dancer, âm nhạc, quà tặng và hiệu ứng LIVE.',
+    status: 'ready',
+  },
+  {
+    id: 'bamboo-battle',
+    order: 'GAME 02',
+    title: 'Đại chiến bè tre',
+    description: 'Hai đội thi đấu trên bè tre theo bình luận và quà tặng của người xem.',
+    status: 'ready',
+  },
+] as const;
+
+const battleBotNames = [
+  'An Nhiên', 'Bảo Long', 'Cá Mập Con', 'Diệu Linh', 'Gia Huy', 'Hải Yến', 'Khánh Vy', 'Linh Miu', 'Minh Anh',
+  'Nam Phong', 'Ngọc Bích', 'Panda Mập', 'Quỳnh Chi', 'Ryan Fan', 'Sky Nguyễn', 'Thanh Tâm', 'Trúc Xinh', 'Tuấn Kiệt',
+  'Uyên Nhi', 'Vân Mây', 'Xuân Mai', 'Yến Nhi', 'Zin Cool', 'Bé Bông', 'Cún Nhỏ', 'Đậu Đỏ', 'Gấu Trúc', 'Hana',
+  'Ken Live', 'Mèo Mun', 'Nắng Hạ', 'Phúc An', 'Sao Khuya', 'Tí Nâu', 'Vũ Minh', 'Yumi',
+] as const;
+
+function GamesScreen({ config, patch, notify }: ScreenProps & { notify: (message: string, tone?: 'ok' | 'warn' | 'error') => void }) {
+  const stage = config.stage;
+  const [testing, setTesting] = useState<BambooTeam>();
+  const [botRunning, setBotRunning] = useState(false);
+  const [botCount, setBotCount] = useState(24);
+  const [botEvents, setBotEvents] = useState(0);
+  const botTimer = useRef<number>();
+  type BambooTeam = 'green' | 'orange';
+  const stopBotBattle = () => {
+    if (botTimer.current) window.clearInterval(botTimer.current);
+    botTimer.current = undefined;
+    setBotRunning(false);
+  };
+  useEffect(() => () => { if (botTimer.current) window.clearInterval(botTimer.current); }, []);
+  const startBotBattle = async () => {
+    stopBotBattle();
+    const roster = battleBotNames.slice(0, botCount).map((name, index) => ({ id: `battle-bot-${index + 1}`, name, level: 5 + index % 35, team: index % 2 === 0 ? 'green' as const : 'orange' as const }));
+    try {
+      await patch('stage', { gameMode: 'bamboo-battle' });
+      await bridge.openStage();
+      await bridge.gameAction('restart');
+      await Promise.all(roster.map((bot) => bridge.fakeEvent({ type: 'chat', viewer: bot, message: bot.team === 'green' ? '1' : '2' })));
+      setBotEvents(roster.length);
+      setBotRunning(true);
+      botTimer.current = window.setInterval(() => {
+        const bot = roster[Math.floor(Math.random() * roster.length)];
+        if (!bot) return;
+        void (async () => {
+          await bridge.fakeEvent({ type: 'chat', viewer: bot, message: bot.team === 'green' ? '1' : '2' });
+          if (Math.random() < 0.2) {
+            const diamonds = [1, 5, 10, 20][Math.floor(Math.random() * 4)] ?? 1;
+            await bridge.fakeEvent({ type: 'gift', viewer: bot, giftName: diamonds >= 10 ? 'Tim pha lê' : 'Hoa hồng', giftCount: 1 + Math.floor(Math.random() * 3), diamonds });
+          } else {
+            await bridge.fakeEvent({ type: 'like', viewer: bot, likeCount: 10 + Math.floor(Math.random() * 111) });
+          }
+          setBotEvents((count) => count + 2);
+        })().catch(() => stopBotBattle());
+      }, 650);
+      notify(`Đã thêm ${roster.length} người chơi giả vào hai phe.`);
+    } catch (error) {
+      stopBotBattle();
+      notify(error instanceof Error ? error.message : 'Không thể bật người chơi giả.', 'error');
+    }
+  };
+  const testBattle = async (team: BambooTeam) => {
+    setTesting(team);
+    const number = team === 'green' ? '1' : '2';
+    const viewer = { id: `battle-test-${team}`, name: team === 'green' ? 'Chiến Binh Xanh' : 'Chiến Binh Cam', level: 12 };
+    try {
+      await patch('stage', { gameMode: 'bamboo-battle' });
+      await bridge.openStage();
+      await bridge.fakeEvent({ type: 'chat', viewer, message: number });
+      await bridge.fakeEvent({ type: 'like', viewer, likeCount: 120 });
+      await bridge.fakeEvent({ type: 'gift', viewer, giftName: 'Hoa hồng thử nghiệm', giftCount: 3, diamonds: 10 });
+      notify(`Đã thử lực đẩy cho phe ${team === 'green' ? 'Xanh' : 'Cam'}.`);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Không thể chạy thử Game 2.', 'error');
+    } finally { setTesting(undefined); }
+  };
+  return <div className="screen-grid games-grid">
+    <Card className="games-hero span-2">
+      <div className="games-hero-icon"><Icon name="games" size={28}/></div>
+      <div><span className="eyebrow">THƯ VIỆN GAME LIVE</span><h2>Mỗi game là một chế độ độc lập</h2><p>Sàn nhảy được giữ nguyên hoạt động. Game mới có thể bổ sung sau mà không trộn cài đặt giữa các trò chơi.</p></div>
+      <span className="game-count">02 <small>GAME</small></span>
+    </Card>
+
+    <div className="game-catalog span-2">
+      {gameCatalog.map((game) => { const selected = stage.gameMode === game.id; return <button type="button" key={game.id} className={`game-tile ${game.status} ${selected ? 'selected' : ''}`} onClick={() => void patch('stage', { gameMode: game.id })}>
+        <div className={`game-cover ${game.id}`} aria-hidden="true">
+          {game.id === 'dance-floor' ? <><i/><i/><i/><span>ORBIT LIVE</span><b/></> : <><i/><i/><span>1</span><span>2</span><b/></>}
+        </div>
+        <div className="game-tile-copy">
+          <div><span>{game.order}</span><em className={selected ? 'active' : 'ready'}>{selected ? 'ĐANG SỬ DỤNG' : 'SẴN SÀNG'}</em></div>
+          <h3>{game.title}</h3><p>{game.description}</p>
+          <small>{selected ? 'Cấu hình bên dưới' : 'Nhấn để chọn game này'}</small>
+        </div>
+      </button>})}
+    </div>
+
+    {stage.gameMode === 'dance-floor' ? <>
+    <Card className="stage-preset-card">
+      <CardTitle title="Giao diện Game 1" hint="Chọn kiểu sàn nhảy đang hiển thị trên Stage."/>
+      <div className="stage-preset-options">
+        {([['orbit', 'Orbit', 'Neon nguyên bản'], ['club', 'Club', 'Tím đỏ · đông dancer'], ['prism', 'Prism Grid', 'Xanh ngọc · LED khối']] as const).map(([value, title, hint]) => <button key={value} type="button" className={stage.danceFloorStyle === value ? 'selected' : ''} onClick={() => void patch('stage', { danceFloorStyle: value })}><i/><span><strong>{title}</strong><small>{hint}</small></span>{stage.danceFloorStyle === value && <Icon name="check" size={14}/>}</button>)}
+      </div>
+    </Card>
+
+    <Card>
+      <CardTitle title="Cấu hình Sàn nhảy" hint="Các tùy chọn này chỉ thuộc Game 1."/>
+      <Field label="Chuyển động camera"><select value={stage.cameraMode} onChange={(e) => void patch('stage', { cameraMode: e.target.value as typeof stage.cameraMode })}><option value="ambient">Ambient · lia nhẹ</option><option value="cinematic">Cinematic · lia rộng</option><option value="locked">Locked · cố định</option></select></Field>
+      <Toggle checked={stage.threeDEnabled} onChange={(threeDEnabled) => void patch('stage', { threeDEnabled })} label="Bật Three.js" description="Tắt để chỉ dùng overlay 2D."/>
+      <Toggle checked={stage.floorBright} onChange={(floorBright) => void patch('stage', { floorBright })} label="Sàn nhảy phản ứng nhạc"/>
+      <Toggle checked={stage.lasers} onChange={(lasers) => void patch('stage', { lasers })} label="Laser & spotlight"/>
+      <Toggle checked={stage.ledScreens} onChange={(ledScreens) => void patch('stage', { ledScreens })} label="Màn LED 3D"/>
+      <Toggle checked={stage.topPodiums} onChange={(topPodiums) => void patch('stage', { topPodiums })} label="Bục TOP 1 / 2 / 3"/>
+      <Toggle checked={stage.autoFitCrowd} onChange={(autoFitCrowd) => void patch('stage', { autoFitCrowd })} label="Tự giãn khi đông" description="Tự thêm hàng, thu nhỏ nhân vật và giữ người mới/TOP trên sàn."/>
+      <div className="form-grid">
+        <Field label={`Số nhân vật tối đa · ${stage.maxFloorActors}`}><input type="range" min="8" max="80" step="1" value={stage.maxFloorActors} onChange={(event) => void patch('stage', { maxFloorActors: Number(event.target.value) })}/></Field>
+        <Field label={`Độ rộng sàn · ${stage.floorWidth}%`}><input type="range" min="80" max="110" step="1" value={stage.floorWidth} onChange={(event) => void patch('stage', { floorWidth: Number(event.target.value) })}/></Field>
+      </div>
+    </Card>
+    </> : <>
+    <Card>
+      <CardTitle title="Luật Game 2" hint="Sự kiện chạy trực tiếp từ TikFinity đang kết nối."/>
+      <div className="battle-rules">
+        <div><b>1</b><span><strong>Vào phe Xanh</strong><small>Người xem bình luận số 1</small></span></div>
+        <div><b>2</b><span><strong>Vào phe Cam</strong><small>Người xem bình luận số 2</small></span></div>
+        <div><b>♥</b><span><strong>Like tạo lực đẩy</strong><small>Chỉ tính sau khi đã chọn phe</small></span></div>
+        <div><b>🎁</b><span><strong>Quà tạo cú đẩy mạnh</strong><small>Sức mạnh dựa trên kim cương và combo</small></span></div>
+      </div>
+      <div className={`battle-bots ${botRunning ? 'running' : ''}`}>
+        <div className="battle-bot-status"><i/><span><strong>Người chơi giả tự động</strong><small>{botRunning ? `${botCount} người · ${botEvents} sự kiện đã phát` : 'Tự vào phe, thả tim và gửi quà để thử game'}</small></span></div>
+        <label><span>Số người · {botCount}</span><input type="range" min="6" max="36" step="2" value={botCount} disabled={botRunning} onChange={(event) => setBotCount(Number(event.target.value))}/></label>
+        <button type="button" className={`button ${botRunning ? 'danger' : 'primary'}`} onClick={() => botRunning ? stopBotBattle() : void startBotBattle()}>{botRunning ? 'Dừng mô phỏng' : 'Bắt đầu mô phỏng'}</button>
+      </div>
+      <div className="battle-test-actions"><button className="button secondary" disabled={Boolean(testing)} onClick={() => void testBattle('green')}>{testing === 'green' ? <span className="spinner"/> : null}Thử phe Xanh</button><button className="button secondary orange" disabled={Boolean(testing)} onClick={() => void testBattle('orange')}>{testing === 'orange' ? <span className="spinner"/> : null}Thử phe Cam</button><button className="button subtle" onClick={() => void bridge.gameAction('restart')}>Ván mới</button><button className="button subtle" onClick={() => void bridge.openStage()}>Mở Stage</button></div>
+    </Card>
+    <Card>
+      <CardTitle title="Cấu hình Đại chiến bè tre" hint="Áp dụng từ ván mới hoặc sự kiện tiếp theo."/>
+      <Field label={`Thời gian mỗi ván · ${stage.bambooRoundSeconds} giây`}><input type="range" min="30" max="300" step="10" value={stage.bambooRoundSeconds} onChange={(event) => void patch('stage', { bambooRoundSeconds: Number(event.target.value) })}/></Field>
+      <Field label={`Sức mạnh Like · ${stage.bambooLikePower.toFixed(2)}`} hint="Mỗi lượt thích nhân với hệ số này."><input type="range" min="0.01" max="0.5" step="0.01" value={stage.bambooLikePower} onChange={(event) => void patch('stage', { bambooLikePower: Number(event.target.value) })}/></Field>
+      <Field label={`Sức mạnh quà · ${stage.bambooGiftPower.toFixed(1)}`} hint="Kim cương × combo × hệ số."><input type="range" min="0.1" max="3" step="0.1" value={stage.bambooGiftPower} onChange={(event) => void patch('stage', { bambooGiftPower: Number(event.target.value) })}/></Field>
+      <Toggle checked={stage.bambooAutoRestart} onChange={(bambooAutoRestart) => void patch('stage', { bambooAutoRestart })} label="Tự mở ván mới" description="Chờ 8 giây sau khi công bố kết quả."/>
+    </Card>
+    </>}
+  </div>;
+}
+
 function CustomizeScreen({ config, patch, notify }: ScreenProps & { notify: (message: string, tone?: 'ok' | 'warn' | 'error') => void }) {
   const stage = config.stage;
   const [wishes, setWishes] = useState<GiftWishRecord[]>([]);
@@ -383,7 +541,8 @@ function CustomizeScreen({ config, patch, notify }: ScreenProps & { notify: (mes
   return <div className="screen-grid customize-grid">
     <Card className="stage-preview-card">
       <CardTitle title="Bản xem trước 9:16" hint="Bố cục co giãn giống OBS Browser Source." action={<span className="badge success"><span className="status-dot ok"/>SYNC</span>}/>
-      <div className={`mini-stage theme-${stage.theme}`}>
+      <div className={`mini-stage theme-${stage.theme} floor-${stage.danceFloorStyle}`}>
+        <div className="mini-stage-rig"><i/><i/><i/><i/><i/></div><div className="mini-stage-screen">{stage.danceFloorStyle === 'prism' ? 'PRISM LIVE' : stage.danceFloorStyle === 'club' ? 'CLUB LIVE' : 'ORBIT LIVE'}</div><div className="mini-stage-platform"/><div className="mini-stage-floor"/>
         <div className="mini-stars"/><div className="mini-led">ORBITSTAGE · LIVE NOW</div><div className="mini-leaderboard"><span>🏆 TOP GIFTERS</span><b>1 · Luna</b><b>2 · Minh Anh</b><b>3 · Sky</b></div><div className="mini-character a"><i/><b>NOVA</b></div><div className="mini-character b"><i/><b>ECHO</b></div><div className="mini-chat"><span>MA</span><p><b>Minh Anh</b> Sân khấu đẹp quá! ✨</p></div><div className="mini-deck">◀  Now playing  ·  Cosmic Bloom  ▶</div>
       </div>
     </Card>
@@ -401,20 +560,6 @@ function CustomizeScreen({ config, patch, notify }: ScreenProps & { notify: (mes
         <CardTitle title="Hiệu năng"/>
         <Field label="Chất lượng hiệu ứng"><select value={stage.effectQuality} onChange={(e) => void patch('stage', { effectQuality: e.target.value as typeof stage.effectQuality })}><option value="low">Thấp · GPU yếu</option><option value="balanced">Cân bằng</option><option value="high">Cao · GPU rời</option></select></Field>
         <Field label="Kiểu avatar"><select value={stage.avatarStyle} onChange={(e) => void patch('stage', { avatarStyle: e.target.value as typeof stage.avatarStyle })}><option value="round">Tròn</option><option value="hex">Lục giác</option><option value="neon">Neon</option></select></Field>
-      </Card>
-      <Card>
-        <CardTitle title="Sân khấu 3D" hint="Đèn, camera và booth được đồng bộ với LIVE."/>
-        <Field label="Chuyển động camera"><select value={stage.cameraMode} onChange={(e) => void patch('stage', { cameraMode: e.target.value as typeof stage.cameraMode })}><option value="ambient">Ambient · lia nhẹ</option><option value="cinematic">Cinematic · lia rộng</option><option value="locked">Locked · cố định</option></select></Field>
-        <Toggle checked={stage.threeDEnabled} onChange={(threeDEnabled) => void patch('stage', { threeDEnabled })} label="Bật Three.js" description="Tắt để chỉ dùng overlay 2D."/>
-        <Toggle checked={stage.floorBright} onChange={(floorBright) => void patch('stage', { floorBright })} label="Sàn nhảy phản ứng nhạc"/>
-        <Toggle checked={stage.lasers} onChange={(lasers) => void patch('stage', { lasers })} label="Laser & spotlight"/>
-        <Toggle checked={stage.ledScreens} onChange={(ledScreens) => void patch('stage', { ledScreens })} label="Màn LED 3D"/>
-        <Toggle checked={stage.topPodiums} onChange={(topPodiums) => void patch('stage', { topPodiums })} label="Bục TOP 1 / 2 / 3"/>
-        <Toggle checked={stage.autoFitCrowd} onChange={(autoFitCrowd) => void patch('stage', { autoFitCrowd })} label="Tự giãn khi đông" description="Tự thêm hàng, thu nhỏ nhân vật và giữ người mới/TOP trên sàn."/>
-        <div className="form-grid">
-          <Field label={`Số nhân vật tối đa · ${stage.maxFloorActors}`}><input type="range" min="8" max="80" step="1" value={stage.maxFloorActors} onChange={(event) => void patch('stage', { maxFloorActors: Number(event.target.value) })}/></Field>
-          <Field label={`Độ rộng sàn · ${stage.floorWidth}%`}><input type="range" min="80" max="110" step="1" value={stage.floorWidth} onChange={(event) => void patch('stage', { floorWidth: Number(event.target.value) })}/></Field>
-        </div>
       </Card>
       <Card>
         <CardTitle title="Lệnh người xem" hint="Tương thích bộ lệnh của Quán Bar Online."/>
@@ -451,9 +596,9 @@ function CustomizeScreen({ config, patch, notify }: ScreenProps & { notify: (mes
 function CharactersScreen({ config, runtime, patch, notify }: ScreenProps & { runtime: RuntimeSnapshot; notify: (message: string, tone?: 'ok' | 'warn' | 'error') => void }) {
   const characters = config.characters;
   const characterAssetRoot = `http://127.0.0.1:${runtime.localPort}/project-assets`;
-  const runAction = async (action: 'greet' | 'reset') => {
+  const runAction = async (action: 'greet' | 'beat' | 'reset') => {
     await bridge.characterAction(action);
-    notify(action === 'greet' ? 'MC/DJ đang chào khán giả trên Stage.' : 'Đã đặt lại pose MC/DJ.', 'ok');
+    notify(action === 'greet' ? 'MC/DJ đang chào khán giả trên Stage.' : action === 'beat' ? 'Đã phát một beat test trên Stage.' : 'Đã đặt lại pose MC/DJ.', 'ok');
   };
   return <div className="screen-grid character-grid">
     <Card className="character-showcase span-2">
@@ -472,7 +617,7 @@ function CharactersScreen({ config, runtime, patch, notify }: ScreenProps & { ru
       <Toggle checked={characters.lipSync} onChange={(lipSync) => void patch('characters', { lipSync })} label="Lip sync" description="Theo amplitude của TTS/music input."/>
       <Toggle checked={characters.blink} onChange={(blink) => void patch('characters', { blink })} label="Chớp mắt tự nhiên" description="Chu kỳ ngẫu nhiên, giảm cảm giác lặp."/>
       <Toggle checked={characters.shuffle} onChange={(shuffle) => void patch('characters', { shuffle })} label="Đổi vị trí theo lượt" description="Hoán đổi MC/DJ sau mỗi 10 phút."/>
-      <div className="motion-row"><button className="button secondary" onClick={() => void runAction('greet')}><Icon name="sparkles" size={17}/>Test chào</button><button className="button subtle" onClick={() => void runAction('reset')}>Đặt lại pose</button></div>
+      <div className="motion-row"><button className="button secondary" onClick={() => void runAction('greet')}><Icon name="sparkles" size={17}/>Test chào</button><button className="button secondary" onClick={() => void runAction('beat')}><Icon name="pulse" size={17}/>Test nhảy + LED</button><button className="button subtle" onClick={() => void runAction('reset')}>Đặt lại pose</button></div>
     </Card>
   </div>;
 }

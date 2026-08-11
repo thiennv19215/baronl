@@ -31,6 +31,11 @@ export const appConfigSchema = z.object({
     style: z.enum(["marquee", "pulse", "static"]).default("marquee")
   }),
   stage: z.object({
+    gameMode: z.enum(["dance-floor", "bamboo-battle"]).default("dance-floor"),
+    bambooRoundSeconds: z.number().int().min(30).max(300).default(60),
+    bambooAutoRestart: z.boolean().default(true),
+    bambooLikePower: z.number().min(0.01).max(2).default(0.08),
+    bambooGiftPower: z.number().min(0.1).max(5).default(0.8),
     theme: z.enum(["cosmos", "aurora", "midnight"]).default("cosmos"),
     backgroundType: z.enum(["gradient", "image", "video"]).default("gradient"),
     backgroundSource: z.string().max(1024).default(""),
@@ -41,6 +46,7 @@ export const appConfigSchema = z.object({
     effectQuality: z.enum(["low", "balanced", "high"]).default("balanced"),
     avatarStyle: z.enum(["round", "hex", "neon"]).default("neon"),
     threeDEnabled: z.boolean().default(true),
+    danceFloorStyle: z.enum(["orbit", "club", "prism"]).default("orbit"),
     cameraMode: z.enum(["ambient", "cinematic", "locked"]).default("ambient"),
     floorBright: z.boolean().default(true),
     lasers: z.boolean().default(true),

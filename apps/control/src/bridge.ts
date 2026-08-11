@@ -80,10 +80,16 @@ export const bridge = {
     return invokeFallback<string>('asset:select', { kind });
   },
 
-  async characterAction(action: 'greet' | 'reset'): Promise<void> {
+  async characterAction(action: 'greet' | 'beat' | 'reset'): Promise<void> {
     const facade = getFacade();
     if (facade?.characterAction) await facade.characterAction(action);
     else await invokeFallback('character:action', { action });
+  },
+
+  async gameAction(action: 'restart'): Promise<void> {
+    const facade = getFacade();
+    if (facade?.gameAction) await facade.gameAction(action);
+    else await invokeFallback('game:action', { action });
   },
 
   async listWishes(): Promise<GiftWishRecord[]> {

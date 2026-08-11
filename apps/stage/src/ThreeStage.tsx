@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 
 interface ThreeStageProps {
@@ -7,13 +8,17 @@ interface ThreeStageProps {
   live: boolean;
   musicPlaying: boolean;
   audioEnergy: number;
+  beat: number;
   speaking: boolean;
   theme: 'cosmos' | 'aurora' | 'midnight';
   command?: string;
   focusX?: number;
   leaderCount: number;
   giftActive: boolean;
-  settings: { cameraMode: 'ambient' | 'cinematic' | 'locked'; floorBright: boolean; lasers: boolean; ledScreens: boolean; topPodiums: boolean };
+  giftId?: string;
+  lunaCanvas?: HTMLCanvasElement;
+  greeting?: boolean;
+  settings: { cameraMode: 'ambient' | 'cinematic' | 'locked'; floorBright: boolean; lasers: boolean; ledScreens: boolean; topPodiums: boolean; danceFloorStyle: 'orbit' | 'club' | 'prism' };
 }
 
 const palettes = {
@@ -39,11 +44,12 @@ function createSoftGlowTexture() {
 }
 
 /** Transparent WebGL layer; the interactive LIVE overlay remains DOM above it. */
-export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking, theme, command, focusX = 0, leaderCount, giftActive, settings }: ThreeStageProps) {
+export function ThreeStage({ quality, live, musicPlaying, audioEnergy, beat, speaking, theme, command, focusX = 0, leaderCount, giftActive, giftId, lunaCanvas, greeting = false, settings }: ThreeStageProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const liveRef = useRef(live);
   const musicRef = useRef(musicPlaying);
   const audioEnergyRef = useRef(audioEnergy);
+  const beatRef = useRef(beat);
   const speakingRef = useRef(speaking);
   const themeRef = useRef(theme);
   const settingsRef = useRef(settings);
@@ -51,9 +57,12 @@ export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking,
   const focusXRef = useRef(focusX);
   const leaderCountRef = useRef(leaderCount);
   const giftActiveRef = useRef(giftActive);
+  const giftIdRef = useRef(giftId);
+  const greetingRef = useRef(greeting);
   liveRef.current = live;
   musicRef.current = musicPlaying;
   audioEnergyRef.current = audioEnergy;
+  beatRef.current = beat;
   speakingRef.current = speaking;
   themeRef.current = theme;
   settingsRef.current = settings;
@@ -61,6 +70,8 @@ export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking,
   focusXRef.current = focusX;
   leaderCountRef.current = leaderCount;
   giftActiveRef.current = giftActive;
+  giftIdRef.current = giftId;
+  greetingRef.current = greeting;
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -75,6 +86,22 @@ export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking,
     const camera = new THREE.PerspectiveCamera(58, 9 / 16, 0.1, 120);
     camera.position.set(0, 7.2, 16.8);
     camera.lookAt(0, -0.15, -3.8);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = .08;
+    controls.enablePan = false;
+    controls.enableRotate = true;
+    controls.enableZoom = true;
+    controls.rotateSpeed = .55;
+    controls.zoomSpeed = 1;
+    controls.minDistance = 8;
+    controls.maxDistance = 26;
+    controls.minPolarAngle = .72;
+    controls.maxPolarAngle = Math.PI * .42;
+    controls.minAzimuthAngle = -Math.PI * .26;
+    controls.maxAzimuthAngle = Math.PI * .26;
+    controls.target.set(0, -.15, -3.8);
+    controls.update();
     const group = new THREE.Group();
     scene.add(group);
 
@@ -110,6 +137,32 @@ export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking,
     (grid.material as THREE.Material).transparent = true;
     (grid.material as THREE.Material).opacity = 0.72;
     group.add(grid);
+
+    // Club preset: a warm magenta runway with tile seams and a pair of
+    // illuminated side arches, inspired by dense LIVE dance floors.
+    const clubFloor = new THREE.Group();
+    const clubRunway = new THREE.Mesh(new THREE.PlaneGeometry(10.6, 20), new THREE.MeshBasicMaterial({ color: 0x5b102f, transparent: true, opacity: .58, blending: THREE.AdditiveBlending, depthWrite: false }));
+    clubRunway.rotation.x = -Math.PI / 2;
+    clubRunway.position.set(0, -1.775, 1.1);
+    clubFloor.add(clubRunway);
+    const clubTiles = new THREE.GridHelper(18, 18, 0xff4d9d, 0x5b183e);
+    clubTiles.position.set(0, -1.765, 1.1);
+    (clubTiles.material as THREE.Material).transparent = true;
+    (clubTiles.material as THREE.Material).opacity = .8;
+    clubFloor.add(clubTiles);
+    [-1, 1].forEach((side) => {
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(3.1, .08, 8, 36, Math.PI), new THREE.MeshBasicMaterial({ color: side < 0 ? 0xff4ca3 : 0x9f56ff, transparent: true, opacity: .72 }));
+      arch.rotation.z = side * Math.PI / 2;
+      arch.position.set(side * 6.2, 1.3, -4.5);
+      clubFloor.add(arch);
+      for (let index = 0; index < 5; index += 1) {
+        const lamp = new THREE.Mesh(new THREE.SphereGeometry(.12, 12, 10), new THREE.MeshBasicMaterial({ color: index % 2 ? 0xff49a5 : 0x874dff }));
+        lamp.position.set(side * (5.1 + index * .38), -.9 + index * 1.05, -4.25);
+        clubFloor.add(lamp);
+      }
+    });
+    clubFloor.visible = false;
+    group.add(clubFloor);
 
     const rings = new THREE.Group();
     [3.4, 4.8, 6.2].forEach((radius, index) => {
@@ -186,6 +239,23 @@ export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking,
     booth.position.set(0, -1.1, -2.7); group.add(booth);
     const boothTrim = new THREE.Mesh(new THREE.BoxGeometry(6.05, 0.09, 1.38), new THREE.MeshBasicMaterial({ color: 0xff4a8a }));
     boothTrim.position.set(0, -0.4, -2.68); group.add(boothTrim);
+    // Same approach as QuanBarPro: Live2D is drawn into an off-screen canvas,
+    // then that canvas is mapped onto a camera-facing plane inside the 3D stage.
+    const lunaTexture = lunaCanvas ? new THREE.CanvasTexture(lunaCanvas) : undefined;
+    if (lunaTexture) {
+      lunaTexture.colorSpace = THREE.SRGBColorSpace;
+      lunaTexture.premultiplyAlpha = true;
+      lunaTexture.minFilter = THREE.LinearFilter;
+      lunaTexture.magFilter = THREE.LinearFilter;
+    }
+    const lunaBillboard = new THREE.Group();
+    const lunaMaterial = new THREE.MeshBasicMaterial({ ...(lunaTexture ? { map: lunaTexture } : {}), transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const lunaPlane = new THREE.Mesh(new THREE.PlaneGeometry(2.185, 3.45), lunaMaterial);
+    lunaPlane.position.y = 1.7;
+    lunaBillboard.add(lunaPlane);
+    lunaBillboard.position.set(0, -.25, -3.34);
+    lunaBillboard.visible = Boolean(lunaTexture);
+    group.add(lunaBillboard);
     const podiums = new THREE.Group();
     [[0, .45, -2.2, 0xffd700], [-2.05, -.85, -1.75, 0xc8d4e8], [2.05, -.85, -1.75, 0xcd7f32]].forEach(([x, y, z, color], index) => {
       const pad = new THREE.Mesh(new THREE.CylinderGeometry(index === 0 ? .72 : .52, index === 0 ? .8 : .6, index === 0 ? .15 : .1, 32), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: .38, metalness: .55, roughness: .25 }));
@@ -248,7 +318,8 @@ export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking,
     scene.add(lasers);
 
     let lastTheme = '';
-    const clock = new THREE.Clock();
+    const timer = new THREE.Timer();
+    timer.connect(document);
     let frame = 0;
     const resize = () => {
       const { width, height } = mount.getBoundingClientRect();
@@ -260,9 +331,17 @@ export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking,
     const observer = new ResizeObserver(resize);
     observer.observe(mount);
     resize();
-    const render = () => {
+    let lastBeat = beatRef.current;
+    let beatStartedAt = -Infinity;
+    let beatVariant = 0;
+    let lastGiftId = giftIdRef.current;
+    let giftStartedAt = -Infinity;
+    const render = (timestamp?: number) => {
       frame = requestAnimationFrame(render);
-      const elapsed = clock.getElapsedTime();
+      timer.update(timestamp);
+      const elapsed = timer.getElapsed();
+      if (beatRef.current !== lastBeat) { lastBeat = beatRef.current; beatStartedAt = elapsed; beatVariant = lastBeat % 5; }
+      if (giftIdRef.current && giftIdRef.current !== lastGiftId) { lastGiftId = giftIdRef.current; giftStartedAt = elapsed; }
       const palette = palettes[themeRef.current];
       if (lastTheme !== themeRef.current) {
         lastTheme = themeRef.current;
@@ -275,6 +354,8 @@ export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking,
       const syntheticEnergy = (liveRef.current ? 1 : 0.3) * (musicRef.current ? 1.2 : 0.62) * (speakingRef.current ? 1.3 : 1);
       const energy = measuredEnergy > .015 ? .28 + measuredEnergy * 1.25 : syntheticEnergy;
       const stageSettings = settingsRef.current;
+      const clubMode = stageSettings.danceFloorStyle === 'club';
+      const prismMode = stageSettings.danceFloorStyle === 'prism';
       const commandBoost = (["party", "dance", "heart"].includes(commandRef.current ?? "") || giftActiveRef.current) ? 1.7 : 1;
       particles.rotation.y = elapsed * 0.028;
       particles.position.y = Math.sin(elapsed * 0.32) * 0.14;
@@ -292,8 +373,45 @@ export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking,
         pool.material.opacity = 0.045 + Math.max(0, Math.sin(elapsed * (1.4 + index * .07) + index)) * .14 * energy;
         pool.scale.setScalar(.9 + Math.sin(elapsed * .7 + index) * .08 + energy * .11);
       });
-      mainScreen.visible = rightScreen.visible = leftScreen.visible = stageSettings.ledScreens;
-      podiums.visible = stageSettings.topPodiums;
+      // The club preset uses its own authored environment image. Keep only
+      // animated particles, lights and the Live2D billboard above it.
+      clubFloor.visible = false;
+      floor.visible = !clubMode;
+      floorMatte.visible = !clubMode;
+      floorWash.visible = !clubMode;
+      floorPulse.visible = !clubMode;
+      floorPools.forEach((pool) => { pool.visible = !clubMode; });
+      grid.visible = !clubMode;
+      rings.visible = !clubMode && !prismMode;
+      city.visible = !clubMode && !prismMode;
+      overheadRig.visible = !clubMode;
+      speakerStacks.visible = !clubMode;
+      booth.visible = !clubMode && !prismMode;
+      boothTrim.visible = !clubMode && !prismMode;
+      floorWash.material.color.setHex(clubMode ? 0xff2e81 : prismMode ? 0x1ae4ff : palettes[themeRef.current].accent);
+      floorPulse.material.color.setHex(clubMode ? 0xa943ff : prismMode ? 0x3d7cff : 0xff5577);
+      clubRunway.material.opacity = clubMode ? .32 + energy * .28 : 0;
+      (clubTiles.material as THREE.Material & { opacity: number }).opacity = clubMode ? .44 + energy * .36 : 0;
+      clubFloor.children.forEach((object, index) => {
+        if (object instanceof THREE.Mesh && object !== clubRunway) object.scale.setScalar(1 + Math.max(0, Math.sin(elapsed * 3.2 + index)) * energy * .12);
+      });
+      const danceEnergy = musicRef.current ? Math.min(1.35, energy) : .22;
+      const greet = greetingRef.current;
+      const beatAge = elapsed - beatStartedAt;
+      const beatLift = beatAge >= 0 && beatAge < .42 ? Math.sin(Math.PI * beatAge / .42) * (clubMode ? .24 : .18) : 0;
+      const beatDirection = beatVariant === 1 ? -.1 : beatVariant === 2 ? .1 : beatVariant === 3 ? -.17 : beatVariant === 4 ? .17 : 0;
+      const beatScale = beatAge >= 0 && beatAge < .42 ? 1 + Math.sin(Math.PI * beatAge / .42) * .026 : 1;
+      const giftAge = elapsed - giftStartedAt;
+      const giftLift = giftAge >= 0 && giftAge < .9 ? Math.sin(Math.PI * giftAge / .9) * (clubMode ? .92 : .68) : 0;
+      const giftZoom = giftAge >= 0 && giftAge < 1.15 ? Math.sin(Math.PI * giftAge / 1.15) * 2.25 : 0;
+      lunaBillboard.position.set(beatDirection * beatLift * 2, (clubMode ? .7 : prismMode ? .18 : -.25) + Math.sin(elapsed * (greet ? 6.4 : 2.2)) * (greet ? .12 : .045) * danceEnergy + beatLift + giftLift, clubMode ? -5.1 : prismMode ? -4.35 : -3.34);
+      lunaBillboard.scale.setScalar((clubMode ? .76 : prismMode ? .88 : 1) * beatScale * (1 + giftLift * .07));
+      lunaBillboard.rotation.z = Math.sin(elapsed * (greet ? 5.8 : 1.35)) * (greet ? .065 : .018) * danceEnergy + beatLift * (beatDirection ? beatDirection * 1.2 : .12);
+      camera.position.z += ((16.8 - giftZoom) - camera.position.z) * .16;
+      lunaPlane.quaternion.copy(camera.quaternion);
+      if (lunaTexture) lunaTexture.needsUpdate = true;
+      mainScreen.visible = rightScreen.visible = leftScreen.visible = stageSettings.ledScreens && !clubMode;
+      podiums.visible = stageSettings.topPodiums && !clubMode;
       // The real viewer sprites are rendered by DanceFloorActors. Keep the
       // podium geometry, but never mix the old capsule placeholders into it.
       actors.visible = false;
@@ -305,8 +423,8 @@ export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking,
       lasers.visible = stageSettings.lasers || commandBoost > 1;
       mainScreen.material.opacity = 0.52 + Math.max(0, Math.sin(elapsed * 1.15)) * 0.28 * energy;
       city.position.y = Math.sin(elapsed * 0.22) * 0.08;
-      keyLight.intensity = (11 + Math.sin(elapsed * 1.3) * 3 * energy) * commandBoost;
-      rimLight.intensity = (8 + Math.cos(elapsed * 1.7) * 3 * energy) * commandBoost;
+      keyLight.intensity = (11 + Math.sin(elapsed * 1.3) * 3 * energy + giftLift * 18) * commandBoost;
+      rimLight.intensity = (8 + Math.cos(elapsed * 1.7) * 3 * energy + giftLift * 14) * commandBoost;
       accentLight.intensity = speakingRef.current ? 19 : 8;
       movingSpots.forEach((spot, index) => {
         spot.intensity = 7 + energy * 10;
@@ -314,31 +432,34 @@ export function ThreeStage({ quality, live, musicPlaying, audioEnergy, speaking,
         spot.target.position.z = -1.4 + Math.cos(elapsed * .43 + index) * 2.1;
       });
       lasers.children.forEach((laser, index) => { laser.rotation.y = Math.sin(elapsed * .7 + index) * .55; ((laser as THREE.Line).material as THREE.LineBasicMaterial).opacity = .12 + energy * .3; });
-      if (stageSettings.cameraMode !== 'locked') {
-        const currentCommand = commandRef.current ?? '';
-        const cameraFocus = currentCommand === 'camera';
-        const cameraTour = currentCommand === 'quay';
-        const sway = cameraTour ? 2.35 : cameraFocus ? .38 : stageSettings.cameraMode === 'cinematic' ? .95 : .34;
-        const targetX = cameraFocus ? focusXRef.current : 0;
-        const orbitSpeed = cameraTour ? .34 : .16;
-        camera.position.x = targetX * .34 + Math.sin(elapsed * orbitSpeed) * sway;
-        camera.position.y = 7.2 + Math.sin(elapsed * .12) * sway * .32;
-        camera.position.z = 16.8 + Math.cos(elapsed * .1) * sway * .22;
-        camera.lookAt(targetX, cameraFocus ? -.75 : -.15, -3.8);
-      }
+      controls.autoRotate = stageSettings.cameraMode === 'cinematic' && !commandRef.current;
+      controls.autoRotateSpeed = .35;
+      controls.enabled = stageSettings.cameraMode !== 'locked';
+      if (commandRef.current === 'camera') controls.target.x += (focusXRef.current - controls.target.x) * .025;
+      controls.update();
       renderer.render(scene, camera);
     };
     render();
     return () => {
       cancelAnimationFrame(frame);
+      timer.dispose();
+      controls.dispose();
       observer.disconnect();
       particlesGeometry.dispose(); particlesMaterial.dispose(); floor.geometry.dispose(); (floor.material as THREE.Material).dispose(); floorMatte.geometry.dispose(); (floorMatte.material as THREE.Material).dispose(); floorWash.geometry.dispose(); (floorWash.material as THREE.Material).dispose(); floorPulse.geometry.dispose(); (floorPulse.material as THREE.Material).dispose(); floorPools.forEach((pool) => { pool.geometry.dispose(); pool.material.dispose(); }); glowTexture.dispose(); cityGeometry.dispose();
       [mainScreen, rightScreen, leftScreen, booth, boothTrim].forEach((object) => { object.geometry.dispose(); (object.material as THREE.Material).dispose(); }); podiums.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } }); actors.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } }); lasers.traverse((object) => { if (object instanceof THREE.Line) { object.geometry.dispose(); object.material.dispose(); } });
+      lunaPlane.geometry.dispose(); (lunaPlane.material as THREE.Material).dispose(); lunaTexture?.dispose();
+      clubFloor.traverse((object) => {
+        if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
+          object.geometry.dispose();
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          materials.forEach((material) => material.dispose());
+        }
+      });
       rings.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } });
       overheadRig.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } });
       speakerStacks.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } });
       renderer.dispose(); renderer.domElement.remove();
     };
-  }, [quality]);
-  return <div ref={mountRef} className="three-stage" aria-hidden="true" />;
+  }, [quality, lunaCanvas]);
+  return <div ref={mountRef} className="three-stage" data-luna-action={greeting ? 'greet' : undefined} aria-hidden="true" />;
 }

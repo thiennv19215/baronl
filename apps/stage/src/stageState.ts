@@ -13,6 +13,11 @@ export const initialStageState: StageState = {
     style: 'marquee',
   },
   appearance: {
+    gameMode: 'dance-floor',
+    bambooRoundSeconds: 60,
+    bambooAutoRestart: true,
+    bambooLikePower: 0.08,
+    bambooGiftPower: 0.8,
     theme: 'cosmos',
     transparent: false,
     backgroundType: 'gradient',
@@ -24,6 +29,7 @@ export const initialStageState: StageState = {
     effectQuality: 'balanced',
     avatarStyle: 'neon',
     threeDEnabled: true,
+    danceFloorStyle: 'orbit',
     cameraMode: 'ambient',
     floorBright: true,
     lasers: true,
@@ -51,6 +57,7 @@ export const initialStageState: StageState = {
   wishes: [],
   music: { title: 'Cosmic Bloom', artist: 'OrbitStage library', playing: false, volume: 70, crossfadeSeconds: 1.5, beatSensitivity: 1.4, playlist: [] },
   sessionLikes: 0,
+  testBeat: 0,
 };
 
 type UnknownRecord = Record<string, unknown>;
@@ -211,6 +218,7 @@ export function stageReducer(state: StageState, action: StageAction): StageState
   if (type === 'character_action') {
     if (payload.action === 'reset') return { ...state, characterAction: undefined, speech: undefined };
     if (payload.action === 'greet') return { ...state, characterAction: { name: 'greet', until: timestamp + 2_600 } };
+    if (payload.action === 'beat') return { ...state, testBeat: state.testBeat + 1 };
     return state;
   }
   if (type === 'viewer_level_up') {

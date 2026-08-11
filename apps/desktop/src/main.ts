@@ -29,7 +29,9 @@ app.setName("OrbitStage Live");
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
 const isE2E = process.env.ORBITSTAGE_E2E === "1";
-const isDevelopment = !isE2E && (!app.isPackaged || process.env.ORBITSTAGE_DEV === "1");
+// `npm start` runs the built local app without a Vite server.  Keep the
+// development server opt-in so that command can load the bundled control UI.
+const isDevelopment = !isE2E && (process.env.ORBITSTAGE_DEV === "1" || (!app.isPackaged && process.env.ORBITSTAGE_DEV !== "0"));
 if (isE2E && process.env.ORBITSTAGE_USER_DATA && path.isAbsolute(process.env.ORBITSTAGE_USER_DATA)) {
   app.setPath("userData", path.resolve(process.env.ORBITSTAGE_USER_DATA));
 }
@@ -52,7 +54,21 @@ let healthTimer: NodeJS.Timeout | undefined;
 const localApiToken = randomBytes(32).toString("base64url");
 
 function appPaths() {
-  const root = app.getAppPath();
+  const appRoot = app.getAppPath();
+  // When Electron receives a compiled main file directly, its app path is
+  // `apps/desktop/dist`; when started through the workspace dev script it is
+  // `apps/desktop`. Both need to resolve static assets from the repository
+  // root, while a packaged application already has that layout at appPath.
+  const root = app.isPackaged
+    ? appRoot
+    : path.basename(appRoot) === "dist"
+      ? path.resolve(appRoot, "..", "..", "..")
+      : path.basename(appRoot) === "desktop"
+        ? path.resolve(appRoot, "..", "..")
+        // Playwright launches Electron with the repository directory as its
+        // app path. In that case it is already the root; resolving parents
+        // would point the control window at a non-existent index.html.
+        : appRoot;
   return {
     root,
     controlIndex: path.join(root, "apps", "control", "dist", "index.html"),
@@ -418,9 +434,15 @@ function registerIpc(): void {
     return { opened: true };
   });
   handle("character:action", async (_event, payload) => {
-    const { action } = z.object({ action: z.enum(["greet", "reset"]) }).parse(payload);
+    const { action } = z.object({ action: z.enum(["greet", "beat", "reset"]) }).parse(payload);
     await createStageWindow();
     emitRuntime({ type: "character_action", payload: { action, timestamp: Date.now() } });
+    return { action };
+  });
+  handle("game:action", async (_event, payload) => {
+    const { action } = z.object({ action: z.literal("restart") }).parse(payload);
+    await createStageWindow();
+    emitRuntime({ type: "game_action", payload: { action, timestamp: Date.now() } });
     return { action };
   });
   handle("music:control", (_event, payload) => {

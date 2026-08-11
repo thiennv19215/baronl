@@ -43,6 +43,11 @@ export interface GiftWishItem {
 }
 
 export interface StageAppearance {
+  gameMode: 'dance-floor' | 'bamboo-battle';
+  bambooRoundSeconds: number;
+  bambooAutoRestart: boolean;
+  bambooLikePower: number;
+  bambooGiftPower: number;
   theme: 'cosmos' | 'aurora' | 'midnight';
   transparent: boolean;
   backgroundType: 'gradient' | 'image' | 'video';
@@ -54,6 +59,7 @@ export interface StageAppearance {
   effectQuality: 'low' | 'balanced' | 'high';
   avatarStyle: 'round' | 'hex' | 'neon';
   threeDEnabled: boolean;
+  danceFloorStyle: 'orbit' | 'club' | 'prism';
   cameraMode: 'ambient' | 'cinematic' | 'locked';
   floorBright: boolean;
   lasers: boolean;
@@ -87,6 +93,7 @@ export interface StageState {
   eventFx?: { type: 'hearts' | 'fireworks' | 'spotlight'; viewerId?: string; intensity: number; until: number };
   stageCommand?: { name: string; viewerId?: string; until: number };
   characterAction?: { name: 'greet'; until: number };
+  testBeat: number;
   audioOwner?: boolean;
 }
 

@@ -1,6 +1,7 @@
 export type ScreenId =
   | 'live'
   | 'led'
+  | 'games'
   | 'customize'
   | 'characters'
   | 'ai'
@@ -47,6 +48,11 @@ export interface AppConfig {
     style: 'marquee' | 'pulse' | 'static';
   };
   stage: {
+    gameMode: 'dance-floor' | 'bamboo-battle';
+    bambooRoundSeconds: number;
+    bambooAutoRestart: boolean;
+    bambooLikePower: number;
+    bambooGiftPower: number;
     theme: 'cosmos' | 'aurora' | 'midnight';
     backgroundType: 'gradient' | 'image' | 'video';
     backgroundSource: string;
@@ -57,6 +63,7 @@ export interface AppConfig {
     effectQuality: 'low' | 'balanced' | 'high';
     avatarStyle: 'round' | 'hex' | 'neon';
     threeDEnabled: boolean;
+    danceFloorStyle: 'orbit' | 'club' | 'prism';
     cameraMode: 'ambient' | 'cinematic' | 'locked';
     floorBright: boolean;
     lasers: boolean;
@@ -158,5 +165,6 @@ export interface OrbitStageFacade {
   listWishes?: () => Promise<GiftWishRecord[]>;
   setWishVisible?: (id: string, visible: boolean) => Promise<GiftWishRecord[]>;
   removeWish?: (id: string) => Promise<GiftWishRecord[]>;
-  characterAction?: (action: 'greet' | 'reset') => Promise<unknown>;
+  characterAction?: (action: 'greet' | 'beat' | 'reset') => Promise<unknown>;
+  gameAction?: (action: 'restart') => Promise<unknown>;
 }

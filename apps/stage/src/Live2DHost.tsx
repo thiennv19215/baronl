@@ -5,6 +5,7 @@ interface Live2DHostProps {
   speaking: boolean;
   blink: boolean;
   fallbackSource: string;
+  onCanvasReady?: (canvas: HTMLCanvasElement | undefined) => void;
 }
 
 type CubismFrameworkModule = {
@@ -49,7 +50,7 @@ async function createTexture(gl: WebGLRenderingContext, url: string): Promise<We
   return texture;
 }
 
-export function Live2DHost({ assetRoot, speaking, blink, fallbackSource }: Live2DHostProps) {
+export function Live2DHost({ assetRoot, speaking, blink, fallbackSource, onCanvasReady }: Live2DHostProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const speakingRef = useRef(speaking);
   const blinkRef = useRef(blink);
@@ -67,6 +68,7 @@ export function Live2DHost({ assetRoot, speaking, blink, fallbackSource }: Live2
     const canvas = document.createElement('canvas');
     canvas.className = 'live2d-canvas';
     container.append(canvas);
+    onCanvasReady?.(canvas);
 
     void (async () => {
       try {
@@ -146,9 +148,10 @@ export function Live2DHost({ assetRoot, speaking, blink, fallbackSource }: Live2
       cancelAnimationFrame(frame);
       observer?.disconnect();
       destroyRuntime?.();
+      onCanvasReady?.(undefined);
       canvas.remove();
     };
-  }, [assetRoot]);
+  }, [assetRoot, onCanvasReady]);
 
   return <div ref={containerRef} className={`live2d-host ${failed ? 'failed' : ''}`}>{failed && <img className="host-art base-art" src={fallbackSource} alt=""/>}</div>;
 }
