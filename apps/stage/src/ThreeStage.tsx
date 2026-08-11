@@ -112,7 +112,8 @@ export function ThreeStage({
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x09070d, 0.035);
+    const stageFog = new THREE.FogExp2(0x09070d, 0.035);
+    scene.fog = stageFog;
 
     const camera = new THREE.PerspectiveCamera(52, 9 / 16, 0.1, 90);
     const cameraDirector = new CameraDirector(camera);
@@ -222,7 +223,7 @@ export function ThreeStage({
       camera.fov += (targetFov - camera.fov) * 0.075;
       camera.updateProjectionMatrix();
 
-      scene.fog!.density = stageSettings.danceFloorStyle === 'club' ? 0.032 : 0.039;
+      stageFog.density = stageSettings.danceFloorStyle === 'club' ? 0.032 : 0.039;
       nightclub.root.scale.setScalar(stageSettings.danceFloorStyle === 'prism' ? 0.98 : 1);
       actors.root.position.z = stageSettings.danceFloorStyle === 'prism' ? -0.25 : 0;
 
