@@ -72,4 +72,13 @@ describe('bamboo battle', () => {
     expect(state.effects.length).toBeLessThanOrEqual(12);
     expect(state.effects.length).toBeGreaterThan(1);
   });
+
+  it('keeps effect ids unique for same-millisecond events after the queue is active', () => {
+    let state = bambooBattleReducer(createInitialBambooState(), { type: 'start', now: 0 });
+    state = bambooBattleReducer(state, { type: 'event', event: { type: 'chat', timestamp: 1, payload: { userId: 'fighter', comment: '1' } } });
+    state = bambooBattleReducer(state, { type: 'event', event: { type: 'like', timestamp: 100, payload: { userId: 'fighter', count: 1 } } });
+    state = bambooBattleReducer(state, { type: 'event', event: { type: 'like', timestamp: 100, payload: { userId: 'fighter', count: 1 } } });
+    const ids = state.effects.slice(-2).map((effect) => effect.id);
+    expect(new Set(ids).size).toBe(2);
+  });
 });
