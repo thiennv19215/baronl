@@ -16,6 +16,12 @@ export interface GameManagerProps {
   notify: Notify;
 }
 
+export interface GameScreenProps extends GameManagerProps {
+  active: boolean;
+  onBack: () => void;
+  onActivate: () => Promise<void> | void;
+}
+
 export interface GameDefinition {
   id: GameId;
   order: string;
