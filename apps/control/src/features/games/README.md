@@ -1,36 +1,41 @@
 # Control Game Feature
 
-`features/games` is the active Control application UI. Opening Control lands directly on the Game Store; the legacy `App.tsx` shell is not mounted by `main.tsx`.
+`features/games` owns the Game workspace inside the existing OrbitStage Control shell.
+
+The sidebar and topbar remain owned by `App.tsx`. When `screen === 'games'`, `App.tsx` mounts `GameHubScreen` directly inside the normal content area and passes the same config/patch/notification infrastructure used by the other Control screens.
 
 ## User flow
 
 ```text
-Open Control
-  -> Game Store (Game 01 + Game 02 only)
-     -> Game 01 manager
-        -> Back to Game Store
-     -> Game 02 manager
-        -> Back to Game Store
+OrbitStage Control
+  -> sidebar: Game
+     -> Game Store (exactly Game 01 + Game 02)
+        -> Game 01 screen
+           -> Back to Game Store
+        -> Game 02 screen
+           -> Back to Game Store
+  -> leave Game tab
+  -> return to Game tab
+     -> Game Store again
 ```
 
-There is no shared sidebar on the Store screen. Each game owns its own management UI.
+Opening a card is navigation only. It does not change the game running on Stage.
 
 ## Structure
 
 ```text
 features/games/
-├─ index.ts                         # public exports for the feature
-├─ GameHubRoot.tsx                  # standalone Control root + config loading/saving
-├─ GameHubScreen.tsx                # Store navigation and manager selection
+├─ index.ts                         # public feature entry point
+├─ GameHubScreen.tsx                # Store navigation + manager dispatch
 ├─ gameCatalog.ts                   # installed game metadata
-├─ types.ts                         # shared game feature types
-├─ README.md                        # local ownership rules
+├─ types.ts                         # shared Game feature types
+├─ README.md                        # ownership and extension rules
 ├─ components/
-│  ├─ GameCover.tsx                 # visual cover used by store/header
+│  ├─ GameCover.tsx                 # visual cover used by cards/header
+│  ├─ GamePageHeader.tsx            # per-game back/status/activate header
 │  └─ GameUi.tsx                    # shared Panel / Field / Toggle primitives
 ├─ styles/
-│  ├─ game-hub.css                  # Store + manager presentation
-│  └─ game-hub-overlay.css          # standalone app layout + toast/loading
+│  └─ game-hub.css                  # Store + dedicated game screens
 ├─ dance-floor/
 │  └─ DanceFloorManager.tsx         # Game 01 settings UI only
 └─ bamboo-battle/
@@ -41,11 +46,13 @@ features/games/
 
 ## Ownership rules
 
-- `main.tsx` mounts only `GameHubRoot` for the Control UI.
-- `GameHubScreen.tsx` must not contain game-specific settings or fake-event logic.
-- `gameCatalog.ts` is the single source of truth for cards shown on the app home.
+- `main.tsx` mounts only `App`.
+- `App.tsx` owns the Control shell, active screen, shared config state and notifications.
+- `App.tsx` mounts `GameHubScreen` only while `screen === 'games'`; leaving Game unmounts the feature and naturally resets its local navigation state.
+- `GameHubScreen.tsx` contains Store navigation and manager selection only. It must not contain game-specific settings or fake-event logic.
+- `gameCatalog.ts` is the single source of truth for cards shown in the Store.
 - Each game owns its settings UI inside its own directory.
-- Test/simulation logic belongs next to the game that uses it, not in the hub.
+- Test/simulation logic belongs beside the game that uses it, not in the Store router.
 - Shared presentational controls belong in `components/`.
 - Feature-specific CSS belongs in `styles/`.
 - External code should import the feature through `features/games/index.ts`.
@@ -56,8 +63,12 @@ features/games/
 2. Add one entry to `gameCatalog.ts`.
 3. Create `your-game/YourGameManager.tsx`.
 4. Add the manager dispatch in `GameHubScreen.tsx`.
-5. Keep runtime/gameplay code in the Stage or service layer; the Control manager should only configure and test it.
+5. Add/extend the Stage `gameMode` and runtime implementation.
+6. Keep gameplay/rendering in Stage or the service layer; Control should configure and test it.
+7. Add an E2E assertion that the new card opens only its own screen.
 
-## Important
+## Important behavior
 
-Opening a game card is navigation only. It must never switch the LIVE Stage automatically. Switching the active LIVE game happens only through the explicit `Kích hoạt game này` action (or an intentional test action that needs that game active).
+- Opening Game 01/Game 02 never switches the LIVE Stage automatically.
+- Switching the active LIVE game only happens through `Kích hoạt game này`, except explicit test helpers that intentionally need that game active.
+- Leaving the Game workspace stops rendering its manager UI. Returning to Game always starts at the two-card Store.
