@@ -186,14 +186,17 @@ export function BambooBattle3D({ state, greenCharacter, orangeCharacter }: Bambo
       orange.root.position.set(orangeBase - (attacker === 'orange' ? dash : attacker === 'green' ? recoil : 0), 0, .1);
       green.root.rotation.z = 0; orange.root.rotation.z = 0;
 
-      const rigs = [green, orange];
-      rigs.forEach((rig, index) => {
+      [green, orange].forEach((rig, index) => {
         const phase = elapsed * 4.2 + index * 1.2;
         rig.model.position.y = Math.sin(phase) * .045;
         rig.model.rotation.x = -.12 + Math.sin(phase * .7) * .025;
+        rig.model.rotation.z = 0;
         rig.leftFoot.position.y = .28 + Math.max(0, Math.sin(phase)) * .03;
         rig.rightFoot.position.y = .28 + Math.max(0, -Math.sin(phase)) * .03;
-        rig.leftArm.rotation.z += (index === 0 ? -1 : 1) * Math.sin(phase) * .012;
+        rig.leftArm.rotation.x = Math.PI * .4;
+        rig.rightArm.rotation.x = Math.PI * .4;
+        rig.leftArm.rotation.z = -.2 + Math.sin(phase) * .05;
+        rig.rightArm.rotation.z = .2 - Math.sin(phase) * .05;
       });
 
       if (active && profile && progress < 1) {
