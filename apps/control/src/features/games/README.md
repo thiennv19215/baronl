@@ -1,14 +1,27 @@
 # Control Game Feature
 
-The `features/games` directory is the only active implementation of the Game Store and per-game management UI.
+`features/games` is the active Control application UI. Opening Control lands directly on the Game Store; the legacy `App.tsx` shell is not mounted by `main.tsx`.
+
+## User flow
+
+```text
+Open Control
+  -> Game Store (Game 01 + Game 02 only)
+     -> Game 01 manager
+        -> Back to Game Store
+     -> Game 02 manager
+        -> Back to Game Store
+```
+
+There is no shared sidebar on the Store screen. Each game owns its own management UI.
 
 ## Structure
 
 ```text
 features/games/
 ├─ index.ts                         # public exports for the feature
-├─ GameHubRoot.tsx                  # config loading/saving + feature toast
-├─ GameHubScreen.tsx                # store navigation and game selection only
+├─ GameHubRoot.tsx                  # standalone Control root + config loading/saving
+├─ GameHubScreen.tsx                # Store navigation and manager selection
 ├─ gameCatalog.ts                   # installed game metadata
 ├─ types.ts                         # shared game feature types
 ├─ README.md                        # local ownership rules
@@ -17,7 +30,7 @@ features/games/
 │  └─ GameUi.tsx                    # shared Panel / Field / Toggle primitives
 ├─ styles/
 │  ├─ game-hub.css                  # Store + manager presentation
-│  └─ game-hub-overlay.css          # mounting/overlay layout + toast/loading
+│  └─ game-hub-overlay.css          # standalone app layout + toast/loading
 ├─ dance-floor/
 │  └─ DanceFloorManager.tsx         # Game 01 settings UI only
 └─ bamboo-battle/
@@ -28,12 +41,13 @@ features/games/
 
 ## Ownership rules
 
+- `main.tsx` mounts only `GameHubRoot` for the Control UI.
 - `GameHubScreen.tsx` must not contain game-specific settings or fake-event logic.
-- `gameCatalog.ts` is the single source of truth for cards shown in the Game Store.
+- `gameCatalog.ts` is the single source of truth for cards shown on the app home.
 - Each game owns its settings UI inside its own directory.
 - Test/simulation logic belongs next to the game that uses it, not in the hub.
 - Shared presentational controls belong in `components/`.
-- Feature-specific CSS belongs in `styles/`, not at `apps/control/src/` root.
+- Feature-specific CSS belongs in `styles/`.
 - External code should import the feature through `features/games/index.ts`.
 
 ## Adding Game 03
