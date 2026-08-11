@@ -103,6 +103,7 @@ test.describe.serial('OrbitStage Electron V2', () => {
     const launchEnvironment = { ...process.env };
     delete launchEnvironment.ELECTRON_RUN_AS_NODE;
     launchEnvironment.ORBITSTAGE_E2E = '1';
+    launchEnvironment.ORBITSTAGE_E2E_AI_KEY = 'e2e-local-test-token';
     launchEnvironment.ORBITSTAGE_USER_DATA = userDataDirectory;
 
     electronApp = await electron.launch({
@@ -188,8 +189,13 @@ test.describe.serial('OrbitStage Electron V2', () => {
           volume: 42,
         },
       });
-      await bridge.invoke('secret:set', { name: 'aiApiKey', value: 'e2e-local-test-token' });
     }, { endpoint: aiStubBaseUrl, musicPath: `http://127.0.0.1:${localPort}/project-assets/music/placeholder-loop.wav` });
+
+    const secretStatus = await controlPage.evaluate(async () => {
+      const bridge = (globalThis as typeof globalThis & { orbitStage: { invoke: (channel: string, payload?: unknown) => Promise<{ aiApiKey: boolean }> } }).orbitStage;
+      return bridge.invoke('secret:status');
+    });
+    expect(secretStatus.aiApiKey).toBe(false);
 
     const aiResult = await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { invoke: (channel: string, payload?: unknown) => Promise<{ text: string }> } }).orbitStage;
