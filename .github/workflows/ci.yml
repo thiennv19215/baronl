@@ -42,5 +42,21 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      - name: Build
-        run: npm run build
+      - name: Asset registry audit
+        continue-on-error: true
+        run: npm run assets:check
+
+      - name: Build shared
+        run: npm run build -w @orbitstage/shared
+
+      - name: Build live service
+        run: npm run build -w @orbitstage/live-service
+
+      - name: Build control
+        run: npm run build -w @orbitstage/control
+
+      - name: Build stage
+        run: npm run build -w @orbitstage/stage
+
+      - name: Build desktop
+        run: npm run build -w @orbitstage/desktop
