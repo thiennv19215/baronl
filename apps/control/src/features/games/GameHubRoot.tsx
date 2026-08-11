@@ -4,7 +4,7 @@ import { defaultConfig, mergeConfig } from '../../lib/model';
 import type { AppConfig, ConfigPatch } from '../../types';
 import { GameHubScreen } from './GameHubScreen';
 import type { Notify, PatchConfig } from './types';
-import '../../game-hub-overlay.css';
+import './styles/game-hub-overlay.css';
 
 export function GameHubRoot() {
   const [config, setConfig] = useState<AppConfig>(defaultConfig);
@@ -36,7 +36,11 @@ export function GameHubRoot() {
     return dispose;
   }, [load]);
 
-  const patch: PatchConfig = useCallback(async (section, value, success) => {
+  const patch = useCallback(async <K extends keyof AppConfig>(
+    section: K,
+    value: Partial<AppConfig[K]>,
+    success?: string,
+  ) => {
     const next = { [section]: value } as ConfigPatch;
     setConfig((current) => mergeConfig(current, next));
     try {
@@ -46,7 +50,7 @@ export function GameHubRoot() {
       notify(error instanceof Error ? error.message : 'Không thể lưu cấu hình game.', 'error');
       void load();
     }
-  }, [load, notify]);
+  }, [load, notify]) as PatchConfig;
 
   return <section className="game-hub-overlay" aria-label="Kho game LIVE">
     {loading
