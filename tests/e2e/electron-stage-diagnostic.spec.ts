@@ -43,13 +43,19 @@ test('Electron Stage resolves to the Stage BrowserWindow and bootstraps its Reac
       return { page, browserWindow, pageUrl: page.url(), pageTitle: await page.title() };
     }));
 
-    const stageEntry = windowMeta.find((entry) => entry.browserWindow.title.includes('Stage 9:16'));
+    const stageEntry = windowMeta.find((entry) =>
+      entry.browserWindow.title === 'OrbitStage · OBS Stage'
+      && entry.browserWindow.url.includes('/stage?')
+      && entry.browserWindow.bounds.width === 540
+      && entry.browserWindow.bounds.height === 960,
+    );
     if (!stageEntry) {
       throw new Error(`No Stage BrowserWindow found. Windows: ${JSON.stringify(windowMeta.map(({ browserWindow, pageUrl, pageTitle }) => ({ browserWindow, pageUrl, pageTitle })))}`);
     }
 
     const stagePage = stageEntry.page;
     await stagePage.waitForLoadState('domcontentloaded');
+    await stagePage.waitForTimeout(750);
     const dom = await stagePage.evaluate(() => ({
       href: location.href,
       title: document.title,
