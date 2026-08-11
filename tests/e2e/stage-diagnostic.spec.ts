@@ -5,7 +5,7 @@ import os from 'node:os';
 
 const projectRoot = path.resolve(import.meta.dirname, '../..');
 
-test('diagnose Stage renderer startup', async () => {
+test('diagnose Bamboo Stage hydration', async () => {
   const userDataDirectory = await mkdtemp(path.join(os.tmpdir(), 'orbitstage-stage-diag-'));
   const launchEnvironment = { ...process.env };
   delete launchEnvironment.ELECTRON_RUN_AS_NODE;
@@ -26,25 +26,37 @@ test('diagnose Stage renderer startup', async () => {
 
     const control = await app.firstWindow();
     await control.waitForLoadState('domcontentloaded');
+    const controlState = await control.evaluate(async () => {
+      const bridge = (globalThis as typeof globalThis & { orbitStage: { invoke: (channel: string, payload?: unknown) => Promise<any> } }).orbitStage;
+      await bridge.invoke('config:patch', { stage: { gameMode: 'bamboo-battle', bambooRoundSeconds: 60, bambooAutoRestart: true } });
+      return {
+        config: await bridge.invoke('config:get'),
+        snapshot: await bridge.invoke('stage:get-snapshot'),
+      };
+    });
+    console.log('BAMBOO_DIAGNOSTIC_CONTROL', JSON.stringify(controlState, null, 2));
+
     const stageWindowPromise = app.waitForEvent('window');
-    await control.getByRole('button', { name: /^Test LIVE/ }).click();
     await control.locator('header').getByRole('button', { name: 'Mở Stage', exact: true }).click();
     const stage = await stageWindowPromise;
     await stage.waitForLoadState('domcontentloaded');
-    await stage.waitForTimeout(2500);
+    await stage.waitForTimeout(1500);
 
-    const state = await stage.evaluate(() => ({
-      href: location.href,
-      title: document.title,
-      readyState: document.readyState,
-      rootHtml: document.querySelector('#root')?.innerHTML ?? null,
-      bodyText: document.body.innerText.slice(0, 500),
-      scripts: Array.from(document.scripts).map((script) => script.src),
-    }));
-    console.log('STAGE_DIAGNOSTIC_STATE', JSON.stringify(state, null, 2));
-    console.log('STAGE_DIAGNOSTIC_PAGE_ERRORS', JSON.stringify(errors, null, 2));
-    console.log('STAGE_DIAGNOSTIC_CONSOLE', JSON.stringify(consoles, null, 2));
-    await expect(stage.locator('.stage')).toBeVisible({ timeout: 1_000 });
+    const stageState = await stage.evaluate(async () => {
+      const bridge = (globalThis as typeof globalThis & { orbitStage?: { getStageSnapshot?: () => Promise<any> } }).orbitStage;
+      return {
+        href: location.href,
+        facade: Boolean(bridge),
+        snapshot: await bridge?.getStageSnapshot?.(),
+        bamboo: Boolean(document.querySelector('.bamboo-stage')),
+        dance: Boolean(document.querySelector('.stage')),
+        rootHtml: document.querySelector('#root')?.innerHTML.slice(0, 1200) ?? null,
+      };
+    });
+    console.log('BAMBOO_DIAGNOSTIC_STAGE', JSON.stringify(stageState, null, 2));
+    console.log('BAMBOO_DIAGNOSTIC_PAGE_ERRORS', JSON.stringify(errors, null, 2));
+    console.log('BAMBOO_DIAGNOSTIC_CONSOLE', JSON.stringify(consoles, null, 2));
+    await expect(stage.locator('.bamboo-stage')).toBeVisible({ timeout: 2_000 });
   } finally {
     await app?.close().catch(() => undefined);
     await rm(userDataDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 150 });
