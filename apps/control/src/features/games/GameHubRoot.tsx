@@ -52,11 +52,13 @@ export function GameHubRoot() {
     }
   }, [load, notify]) as PatchConfig;
 
-  return <main className="game-app-root" aria-label="OrbitStage Game Store">
-    {loading
-      ? <div className="game-hub-loading"><span/><strong>Đang mở kho game…</strong></div>
-      : <GameHubScreen config={config} patch={patch} notify={notify}/>
-    }
+  return <section className="game-hub-overlay" aria-label="OrbitStage Game Store">
+    <div className="game-hub-overlay-inner">
+      {loading
+        ? <div className="game-hub-loading"><span/><strong>Đang mở kho game…</strong></div>
+        : <GameHubScreen config={config} patch={patch} notify={notify}/>
+      }
+    </div>
     {toast && <div className={`game-hub-toast ${toast.tone}`}>{toast.message}</div>}
-  </main>;
+  </section>;
 }
