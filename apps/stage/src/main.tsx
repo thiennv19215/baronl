@@ -26,7 +26,11 @@ class StageRuntimeBoundary extends Component<{ children: ReactNode }, StageRunti
     if (url.searchParams.get('webglFallback') === '1') return;
     url.searchParams.set('quality', 'low');
     url.searchParams.set('webglFallback', '1');
-    window.location.replace(url.toString());
+
+    const persistFallback = window.orbitStage?.invoke?.('config:patch', { stage: { effectQuality: 'low' } });
+    void Promise.resolve(persistFallback)
+      .catch(() => undefined)
+      .finally(() => window.location.replace(url.toString()));
   }
 
   render() {
