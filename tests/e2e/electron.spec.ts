@@ -53,6 +53,18 @@ async function attachPng(testInfo: TestInfo, name: string, page: Page, animation
   await testInfo.attach(name, { body: await page.screenshot({ animations }), contentType: "image/png" });
 }
 
+async function openStagePage(): Promise<Page> {
+  await controlPage.locator("header").getByRole("button", { name: "Mở Stage", exact: true }).click();
+  await expect.poll(
+    () => electronApp.windows().filter((page) => page !== controlPage).map((page) => page.url()).find((url) => url.includes("/stage")) ?? "",
+    { timeout: 15_000 },
+  ).toContain("/stage");
+  const stagePage = electronApp.windows().find((page) => page !== controlPage && page.url().includes("/stage"));
+  if (!stagePage) throw new Error("Stage window opened but could not be resolved by URL.");
+  await stagePage.waitForLoadState("domcontentloaded");
+  return stagePage;
+}
+
 test.describe.serial("OrbitStage Electron", () => {
   test.beforeAll(async () => {
     aiStub = createServer((request, response) => {
@@ -60,12 +72,10 @@ test.describe.serial("OrbitStage Electron", () => {
       response.setHeader("Cache-Control", "no-store");
       if (request.method === "POST" && requestUrl.pathname === "/v1/responses") {
         response.setHeader("Content-Type", "application/json; charset=utf-8");
-        response.end(JSON.stringify({ output_text: "E2E AI caption: pipeline an to\u00e0n s\u00e0ng s\u00e0ng." }));
+        response.end(JSON.stringify({ output_text: "E2E AI caption: pipeline an toàn sẵn sàng." }));
         return;
       }
       if (request.method === "POST" && requestUrl.pathname === "/v1/audio/speech") {
-        // The assertion observes the renderer event, not a network TTS provider.
-        // A small recognizable audio-like payload keeps this entirely local.
         response.setHeader("Content-Type", "audio/mpeg");
         response.end(Buffer.from("ID3\u0003\u0000\u0000\u0000\u0000\u0000\u000fE2E-TTS", "binary"));
         return;
@@ -87,8 +97,6 @@ test.describe.serial("OrbitStage Electron", () => {
     launchEnvironment.ORBITSTAGE_USER_DATA = userDataDirectory;
 
     electronApp = await electron.launch({
-      // Launch the repository package, not main.cjs directly, so app.getAppPath()
-      // resolves to the repository root and packaged renderer paths stay valid.
       args: [projectRoot],
       cwd: projectRoot,
       env: launchEnvironment,
@@ -118,14 +126,15 @@ test.describe.serial("OrbitStage Electron", () => {
       await expect(controlPage.getByRole("heading", { level: 1, name: screen.heading })).toBeVisible();
     }
 
-    await attachPng(testInfo, "control-six-tabs", controlPage);
+    await attachPng(testInfo, "control-seven-tabs", controlPage);
   });
 
   test("opens the real Stage window and renders a fake gift sent through IPC", async ({}, testInfo) => {
-    const stageWindowPromise = electronApp.waitForEvent("window");
-    await controlPage.locator("header").getByRole("button", { name: "Mở Stage", exact: true }).click();
-    const stagePage = await stageWindowPromise;
-    await stagePage.waitForLoadState("domcontentloaded");
+    await controlPage.evaluate(async () => {
+      const bridge = (globalThis as typeof globalThis & { orbitStage: { invoke: (channel: string, payload?: unknown) => Promise<unknown> } }).orbitStage;
+      await bridge.invoke("config:patch", { stage: { gameMode: "dance-floor" } });
+    });
+    const stagePage = await openStagePage();
     await expect(stagePage.locator(".stage")).toBeVisible();
     await expect(stagePage.locator('.stage-logo')).toBeVisible();
     await expect.poll(async () => stagePage.locator('.live2d-host').evaluate((node) => ({ failed: node.classList.contains('failed'), canvasWidth: node.querySelector('canvas')?.width ?? 0 })), { timeout: 15_000 }).toEqual({ failed: false, canvasWidth: expect.any(Number) });
@@ -184,17 +193,12 @@ test.describe.serial("OrbitStage Electron", () => {
     await expect(stagePage.getByText("×2", { exact: true }).first()).toBeVisible();
     await expect(stagePage.locator(".chat-bubble").filter({ hasText: "E2E Comet ×2" })).toHaveCount(1);
 
-    // Keep finite gift animation at its current frame. Disabling animations
-    // fast-forwards gift-enter to its intentionally transparent end state.
     await attachPng(testInfo, "stage-fake-gift", stagePage, "allow");
     await stagePage.close();
   });
 
   test("uses local AI/TTS stubs and preserves Stage state after reopening", async ({}, testInfo) => {
-    const stageWindowPromise = electronApp.waitForEvent("window");
-    await controlPage.getByRole("button", { name: "M\u1edf Stage", exact: true }).click();
-    let stagePage = await stageWindowPromise;
-    await stagePage.waitForLoadState("domcontentloaded");
+    let stagePage = await openStagePage();
 
     const localPort = await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { getSnapshot: () => Promise<{ localPort: number }> } }).orbitStage;
@@ -216,10 +220,10 @@ test.describe.serial("OrbitStage Electron", () => {
 
     const aiResult = await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { invoke: (channel: string, payload?: unknown) => Promise<{ text: string }> } }).orbitStage;
-      return bridge.invoke("ai:test", { prompt: "Ch\u00e0o OrbitStage" });
+      return bridge.invoke("ai:test", { prompt: "Chào OrbitStage" });
     });
     expect(aiResult.text).toContain("E2E AI caption");
-    await expect(stagePage.getByText("E2E AI caption: pipeline an to\u00e0n s\u00e0ng s\u00e0ng.", { exact: true })).toBeVisible();
+    await expect(stagePage.getByText("E2E AI caption: pipeline an toàn sẵn sàng.", { exact: true })).toBeVisible();
 
     await stagePage.evaluate(() => {
       const bridge = (globalThis as typeof globalThis & { orbitStage?: { subscribe?: (listener: (event: { type: string; payload?: unknown }) => void) => (() => void) } }).orbitStage;
@@ -235,16 +239,13 @@ test.describe.serial("OrbitStage Electron", () => {
     });
     await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { invoke: (channel: string, payload?: unknown) => Promise<unknown> } }).orbitStage;
-      await bridge.invoke("tts:test", { text: "E2E TTS kh\u00f4ng ch\u1ed3ng gi\u1ecdng" });
+      await bridge.invoke("tts:test", { text: "E2E TTS không chồng giọng" });
     });
     const ttsEvent = await stagePage.evaluate(() => (globalThis as typeof globalThis & { __ttsEventPromise: Promise<{ source?: string; text?: string }> }).__ttsEventPromise);
-    await expect(ttsEvent).toMatchObject({ source: "test", text: "E2E TTS kh\u00f4ng ch\u1ed3ng gi\u1ecdng" });
+    await expect(ttsEvent).toMatchObject({ source: "test", text: "E2E TTS không chồng giọng" });
 
     await stagePage.close();
-    const reopenedPromise = electronApp.waitForEvent("window");
-    await controlPage.getByRole("button", { name: "M\u1edf Stage", exact: true }).click();
-    stagePage = await reopenedPromise;
-    await stagePage.waitForLoadState("domcontentloaded");
+    stagePage = await openStagePage();
     await expect(stagePage.getByText("E2E Nova", { exact: true }).first()).toBeVisible();
     const rehydrated = await stagePage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { getStageSnapshot: () => Promise<{ music: { title: string; playing: boolean; volume: number } }> } }).orbitStage;
@@ -254,45 +255,52 @@ test.describe.serial("OrbitStage Electron", () => {
     await attachPng(testInfo, "stage-reopened-continuity", stagePage);
   });
 
-  test("runs Bamboo Battle from comments, likes and gifts", async ({}, testInfo) => {
+  test("runs Bamboo Battle V2 from comments, likes and gifts", async ({}, testInfo) => {
     for (const page of electronApp.windows()) if (page !== controlPage) await page.close();
     await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { invoke: (channel: string, payload?: unknown) => Promise<unknown> } }).orbitStage;
       await bridge.invoke("config:patch", { stage: { gameMode: "bamboo-battle", bambooRoundSeconds: 60, bambooAutoRestart: true } });
     });
-    const stageWindowPromise = electronApp.waitForEvent("window");
-    await controlPage.locator("header").getByRole("button", { name: "Mở Stage", exact: true }).click();
-    const stagePage = await stageWindowPromise;
-    await stagePage.waitForLoadState("domcontentloaded");
-    await expect(stagePage.locator(".bamboo-stage")).toBeVisible();
-    await expect(stagePage.getByText("ĐẠI CHIẾN BỜ SÔNG", { exact: true })).toBeVisible();
+    const stagePage = await openStagePage();
+    const battle = stagePage.getByLabel("Bamboo Battle V2");
+    await expect(battle).toBeVisible();
+    await expect(battle.locator(".bamboo-battle-3d canvas")).toBeVisible();
+    await expect(battle.getByText("PHE XANH", { exact: false })).toBeVisible();
+    await expect(battle.getByText("PHE CAM", { exact: false })).toBeVisible();
 
     await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { sendFakeEvent: (event: unknown) => Promise<unknown> } }).orbitStage;
       await bridge.sendFakeEvent({ type: "chat", viewer: { id: "green-e2e", name: "Panda Xanh" }, message: "1" });
+      await bridge.sendFakeEvent({ type: "chat", viewer: { id: "orange-e2e", name: "Panda Cam" }, message: "2" });
       await bridge.sendFakeEvent({ type: "like", viewer: { id: "green-e2e", name: "Panda Xanh" }, likeCount: 100 });
       await bridge.sendFakeEvent({ type: "gift", viewer: { id: "green-e2e", name: "Panda Xanh" }, giftName: "E2E Rose", giftCount: 2, diamonds: 10 });
-      await bridge.sendFakeEvent({ type: "chat", viewer: { id: "orange-e2e", name: "Panda Cam" }, message: "2" });
     });
 
-    await expect(stagePage.locator(".bamboo-battle-3d canvas")).toBeVisible();
-    await expect(stagePage.locator(".bamboo-3d-roster.green").getByText("Panda Xanh", { exact: true })).toBeVisible();
-    await expect(stagePage.locator(".bamboo-3d-roster.orange").getByText("Panda Cam", { exact: true })).toBeVisible();
-    await expect(stagePage.locator(".bamboo-impact")).toBeVisible();
-    await expect(stagePage.locator(".bamboo-power-meter > b")).not.toHaveCSS("left", "50%");
-    await attachPng(testInfo, "stage-bamboo-battle", stagePage, "allow");
+    await expect(battle.locator(".bamboo-v2-mvp.green")).toContainText("Panda Xanh");
+    await expect(battle.locator(".bamboo-v2-mvp.orange")).toContainText("Panda Cam");
+    await expect(battle.locator(".bamboo-v2-event")).toContainText("COMBO!");
+    await expect(battle.locator(".bamboo-v2-event")).toContainText("Panda Xanh");
+    await attachPng(testInfo, "stage-bamboo-battle-v2", stagePage, "allow");
+
     await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { invoke: (channel: string, payload?: unknown) => Promise<unknown> } }).orbitStage;
       await bridge.invoke("game:action", { action: "restart" });
     });
-    await expect(stagePage.getByText("VÁN 2", { exact: true })).toBeVisible();
-    await expect(stagePage.locator(".bamboo-3d-roster > span")).toHaveCount(0);
+    await expect(battle.locator(".bamboo-v2-mvp.green")).toContainText("Đang chờ...");
+    await expect(battle.locator(".bamboo-v2-mvp.orange")).toContainText("Đang chờ...");
+    await expect(battle.locator(".bamboo-v2-event")).toHaveCount(0);
 
     await controlPage.getByRole("button", { name: /^Game/ }).click();
-    await controlPage.getByRole("button", { name: "Bắt đầu mô phỏng" }).click();
-    await expect(stagePage.locator(".bamboo-3d-roster > span")).toHaveCount(6, { timeout: 10_000 });
-    await expect(controlPage.getByText(/24 người · \d+ sự kiện đã phát/)).toBeVisible();
-    await controlPage.getByRole("button", { name: "Dừng mô phỏng" }).click();
-    await expect(controlPage.getByRole("button", { name: "Bắt đầu mô phỏng" })).toBeVisible();
+    const store = controlPage.getByLabel("OrbitStage Game Store");
+    await expect(store.locator(".game-store-card")).toHaveCount(2);
+    await store.getByRole("button", { name: /Bamboo Battle/i }).click();
+    await store.getByRole("button", { name: "Bắt đầu mô phỏng" }).click();
+    await expect(store.getByRole("button", { name: "Dừng mô phỏng" })).toBeVisible();
+    await expect(store.getByText(/24 người · \d+ event/)).toBeVisible();
+    await expect(battle.locator(".bamboo-v2-mvp.green b")).not.toContainText("Đang chờ...");
+    await expect(battle.locator(".bamboo-v2-mvp.orange b")).not.toContainText("Đang chờ...");
+    await expect(battle.locator(".bamboo-v2-event")).toBeVisible();
+    await store.getByRole("button", { name: "Dừng mô phỏng" }).click();
+    await expect(store.getByRole("button", { name: "Bắt đầu mô phỏng" })).toBeVisible();
   });
 });
