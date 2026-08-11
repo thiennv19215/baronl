@@ -36,6 +36,49 @@ interface ThreeStageProps {
   };
 }
 
+function mountWebGlFallback(mount: HTMLDivElement) {
+  const canvas = document.createElement('canvas');
+  canvas.className = 'three-stage-fallback';
+  canvas.dataset.renderer = '2d-fallback';
+  canvas.setAttribute('aria-hidden', 'true');
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  canvas.style.display = 'block';
+  mount.appendChild(canvas);
+
+  const draw = () => {
+    const { width, height } = mount.getBoundingClientRect();
+    if (!width || !height) return;
+    const ratio = Math.min(window.devicePixelRatio || 1, 1.5);
+    canvas.width = Math.max(1, Math.round(width * ratio));
+    canvas.height = Math.max(1, Math.round(height * ratio));
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    const gradient = context.createRadialGradient(
+      canvas.width * 0.5,
+      canvas.height * 0.58,
+      0,
+      canvas.width * 0.5,
+      canvas.height * 0.58,
+      Math.max(canvas.width, canvas.height) * 0.72,
+    );
+    gradient.addColorStop(0, 'rgba(95,45,126,.42)');
+    gradient.addColorStop(0.48, 'rgba(20,16,35,.34)');
+    gradient.addColorStop(1, 'rgba(4,5,10,.06)');
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const observer = new ResizeObserver(draw);
+  observer.observe(mount);
+  draw();
+  return () => {
+    observer.disconnect();
+    canvas.remove();
+  };
+}
+
 export function ThreeStage({
   quality,
   live,
@@ -99,11 +142,18 @@ export function ThreeStage({
     const mount = mountRef.current;
     if (!mount || quality === 'low') return;
 
-    const renderer = new THREE.WebGLRenderer({
-      alpha: true,
-      antialias: quality === 'high',
-      powerPreference: 'high-performance',
-    });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: quality === 'high',
+        powerPreference: 'high-performance',
+      });
+    } catch (error) {
+      console.warn('Stage V2 WebGL unavailable; using resilient 2D fallback.', error);
+      return mountWebGlFallback(mount);
+    }
+
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality === 'high' ? 1.75 : 1.25));
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
