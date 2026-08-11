@@ -36,7 +36,7 @@ export function GameHubRoot() {
     return dispose;
   }, [load]);
 
-  const patch = useCallback(async <K extends keyof AppConfig>(
+  const patch = useCallback(async <K extends keyof AppConfig,>(
     section: K,
     value: Partial<AppConfig[K]>,
     success?: string,
