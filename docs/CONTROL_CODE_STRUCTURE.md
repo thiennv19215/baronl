@@ -135,10 +135,18 @@ A contributor should be able to infer a file's purpose from its path and filenam
 4. full Vitest suite;
 5. required asset registry audit;
 6. builds for `shared`, `live-service`, `control`, `stage`, and `desktop`;
-7. Playwright browser smoke test for the Control Game workspace;
-8. upload UI screenshots/report artifacts.
+7. browser Playwright smoke for the two-card Game Store and route reset;
+8. browser Stage smoke at 540×960 with Bamboo Three.js + gift skill rendering;
+9. Electron E2E under Xvfb/SwiftShader for preload isolation, the real 540×960 Stage window, Three.js, IPC fake LIVE events, local AI/TTS stubs, Bamboo V2 and bot simulation;
+10. upload UI screenshots and the Playwright report.
 
 The asset registry audit is a hard CI gate. Bytes/hash drift must fail the workflow.
+
+The Electron suite uses Chromium SwiftShader on Linux CI so 3D behavior is validated with a deterministic software GPU instead of depending on the hosted runner's display driver. Production secret storage is not weakened for CI: `safeStorage` remains mandatory for persisted keys, while the E2E process may resolve a test-only AI key only when `ORBITSTAGE_E2E=1`.
+
+## Stage WebGL resilience
+
+Stage probes the same Three.js `WebGLRenderer` configuration it will use before bootstrapping the main Stage app. If WebGL cannot be created, it switches to low-quality mode before importing the Stage UI. Bamboo Battle provides a lightweight 2D arena fallback so HUD/game state can remain visible instead of leaving a blank Stage.
 
 ## Current migration state
 
