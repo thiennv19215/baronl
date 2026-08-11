@@ -12,14 +12,15 @@ test('Game Store and Bamboo Battle manager render without page errors', async ({
   await expect(page.getByRole('heading', { name: 'Điều khiển LIVE' })).toBeVisible();
 
   await page.getByRole('button', { name: /^Game/ }).click();
-  await expect(page.getByText('GAME STORE', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Chọn game để quản lý' })).toBeVisible();
+  const hub = page.getByLabel('Kho game LIVE');
+  await expect(hub.getByText('GAME STORE', { exact: true })).toBeVisible();
+  await expect(hub.getByRole('heading', { name: 'Chọn game để quản lý' })).toBeVisible();
   await page.screenshot({ path: 'ui-snapshots/game-store.png', fullPage: true });
 
-  await page.getByRole('button', { name: /Bamboo Battle/i }).click();
-  await expect(page.getByRole('heading', { name: 'Bamboo Battle', exact: true })).toBeVisible();
-  await expect(page.getByText('GAME 02', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Kích hoạt game này|Đang sử dụng/ })).toBeVisible();
+  await hub.getByRole('button', { name: /Bamboo Battle/i }).click();
+  await expect(hub.getByRole('heading', { name: 'Bamboo Battle', exact: true })).toBeVisible();
+  await expect(hub.getByText('GAME 02', { exact: true })).toBeVisible();
+  await expect(hub.getByRole('button', { name: /Kích hoạt game này|Đang sử dụng/ })).toBeVisible();
   await page.screenshot({ path: 'ui-snapshots/bamboo-battle-manager.png', fullPage: true });
 
   expect(pageErrors).toEqual([]);
