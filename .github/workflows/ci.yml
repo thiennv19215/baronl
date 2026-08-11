@@ -36,6 +36,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Build shared package for workspace tests
+        run: npm run build -w @orbitstage/shared
+
       - name: Unit tests
         run: npm test
 
