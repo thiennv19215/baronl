@@ -53,6 +53,8 @@ export interface AppConfig {
     bambooAutoRestart: boolean;
     bambooLikePower: number;
     bambooGiftPower: number;
+    bambooGreenCharacter: 'bear' | 'dog';
+    bambooOrangeCharacter: 'bear' | 'dog';
     theme: 'cosmos' | 'aurora' | 'midnight';
     backgroundType: 'gradient' | 'image' | 'video';
     backgroundSource: string;

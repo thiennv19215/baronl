@@ -265,7 +265,7 @@ test.describe.serial("OrbitStage Electron", () => {
     const stagePage = await stageWindowPromise;
     await stagePage.waitForLoadState("domcontentloaded");
     await expect(stagePage.locator(".bamboo-stage")).toBeVisible();
-    await expect(stagePage.getByText("ĐẠI CHIẾN BÈ TRE", { exact: true })).toBeVisible();
+    await expect(stagePage.getByText("ĐẠI CHIẾN BỜ SÔNG", { exact: true })).toBeVisible();
 
     await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { sendFakeEvent: (event: unknown) => Promise<unknown> } }).orbitStage;
@@ -275,8 +275,9 @@ test.describe.serial("OrbitStage Electron", () => {
       await bridge.sendFakeEvent({ type: "chat", viewer: { id: "orange-e2e", name: "Panda Cam" }, message: "2" });
     });
 
-    await expect(stagePage.locator(".bamboo-team-green").getByText("Panda Xanh", { exact: true })).toBeVisible();
-    await expect(stagePage.locator(".bamboo-team-orange").getByText("Panda Cam", { exact: true })).toBeVisible();
+    await expect(stagePage.locator(".bamboo-battle-3d canvas")).toBeVisible();
+    await expect(stagePage.locator(".bamboo-3d-roster.green").getByText("Panda Xanh", { exact: true })).toBeVisible();
+    await expect(stagePage.locator(".bamboo-3d-roster.orange").getByText("Panda Cam", { exact: true })).toBeVisible();
     await expect(stagePage.locator(".bamboo-impact")).toBeVisible();
     await expect(stagePage.locator(".bamboo-power-meter > b")).not.toHaveCSS("left", "50%");
     await attachPng(testInfo, "stage-bamboo-battle", stagePage, "allow");
@@ -285,11 +286,11 @@ test.describe.serial("OrbitStage Electron", () => {
       await bridge.invoke("game:action", { action: "restart" });
     });
     await expect(stagePage.getByText("VÁN 2", { exact: true })).toBeVisible();
-    await expect(stagePage.locator(".bamboo-player")).toHaveCount(0);
+    await expect(stagePage.locator(".bamboo-3d-roster > span")).toHaveCount(0);
 
     await controlPage.getByRole("button", { name: /^Game/ }).click();
     await controlPage.getByRole("button", { name: "Bắt đầu mô phỏng" }).click();
-    await expect(stagePage.locator(".bamboo-player")).toHaveCount(24, { timeout: 10_000 });
+    await expect(stagePage.locator(".bamboo-3d-roster > span")).toHaveCount(6, { timeout: 10_000 });
     await expect(controlPage.getByText(/24 người · \d+ sự kiện đã phát/)).toBeVisible();
     await controlPage.getByRole("button", { name: "Dừng mô phỏng" }).click();
     await expect(controlPage.getByRole("button", { name: "Bắt đầu mô phỏng" })).toBeVisible();

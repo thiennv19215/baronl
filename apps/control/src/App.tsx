@@ -357,8 +357,8 @@ const gameCatalog = [
   {
     id: 'bamboo-battle',
     order: 'GAME 02',
-    title: 'Đại chiến bè tre',
-    description: 'Hai đội thi đấu trên bè tre theo bình luận và quà tặng của người xem.',
+    title: 'Đại chiến bờ sông',
+    description: 'Gấu hoặc chó con đấu lực trên cầu 3D; phe bị ép rơi xuống sông sẽ thua.',
     status: 'ready',
   },
 ] as const;
@@ -488,7 +488,11 @@ function GamesScreen({ config, patch, notify }: ScreenProps & { notify: (message
       <div className="battle-test-actions"><button className="button secondary" disabled={Boolean(testing)} onClick={() => void testBattle('green')}>{testing === 'green' ? <span className="spinner"/> : null}Thử phe Xanh</button><button className="button secondary orange" disabled={Boolean(testing)} onClick={() => void testBattle('orange')}>{testing === 'orange' ? <span className="spinner"/> : null}Thử phe Cam</button><button className="button subtle" onClick={() => void bridge.gameAction('restart')}>Ván mới</button><button className="button subtle" onClick={() => void bridge.openStage()}>Mở Stage</button></div>
     </Card>
     <Card>
-      <CardTitle title="Cấu hình Đại chiến bè tre" hint="Áp dụng từ ván mới hoặc sự kiện tiếp theo."/>
+      <CardTitle title="Cấu hình Đại chiến bờ sông" hint="Áp dụng từ ván mới hoặc sự kiện tiếp theo."/>
+      <div className="form-grid">
+        <Field label="Nhân vật phe Xanh"><select value={stage.bambooGreenCharacter} onChange={(event) => void patch('stage', { bambooGreenCharacter: event.target.value as typeof stage.bambooGreenCharacter })}><option value="bear">🐻 Gấu con</option><option value="dog">🐶 Chó con</option></select></Field>
+        <Field label="Nhân vật phe Cam"><select value={stage.bambooOrangeCharacter} onChange={(event) => void patch('stage', { bambooOrangeCharacter: event.target.value as typeof stage.bambooOrangeCharacter })}><option value="bear">🐻 Gấu con</option><option value="dog">🐶 Chó con</option></select></Field>
+      </div>
       <Field label={`Thời gian mỗi ván · ${stage.bambooRoundSeconds} giây`}><input type="range" min="30" max="300" step="10" value={stage.bambooRoundSeconds} onChange={(event) => void patch('stage', { bambooRoundSeconds: Number(event.target.value) })}/></Field>
       <Field label={`Sức mạnh Like · ${stage.bambooLikePower.toFixed(2)}`} hint="Mỗi lượt thích nhân với hệ số này."><input type="range" min="0.01" max="0.5" step="0.01" value={stage.bambooLikePower} onChange={(event) => void patch('stage', { bambooLikePower: Number(event.target.value) })}/></Field>
       <Field label={`Sức mạnh quà · ${stage.bambooGiftPower.toFixed(1)}`} hint="Kim cương × combo × hệ số."><input type="range" min="0.1" max="3" step="0.1" value={stage.bambooGiftPower} onChange={(event) => void patch('stage', { bambooGiftPower: Number(event.target.value) })}/></Field>

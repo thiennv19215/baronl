@@ -36,6 +36,8 @@ export const appConfigSchema = z.object({
     bambooAutoRestart: z.boolean().default(true),
     bambooLikePower: z.number().min(0.01).max(2).default(0.08),
     bambooGiftPower: z.number().min(0.1).max(5).default(0.8),
+    bambooGreenCharacter: z.enum(["bear", "dog"]).default("bear"),
+    bambooOrangeCharacter: z.enum(["bear", "dog"]).default("dog"),
     theme: z.enum(["cosmos", "aurora", "midnight"]).default("cosmos"),
     backgroundType: z.enum(["gradient", "image", "video"]).default("gradient"),
     backgroundSource: z.string().max(1024).default(""),

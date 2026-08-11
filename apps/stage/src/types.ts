@@ -48,6 +48,8 @@ export interface StageAppearance {
   bambooAutoRestart: boolean;
   bambooLikePower: number;
   bambooGiftPower: number;
+  bambooGreenCharacter: 'bear' | 'dog';
+  bambooOrangeCharacter: 'bear' | 'dog';
   theme: 'cosmos' | 'aurora' | 'midnight';
   transparent: boolean;
   backgroundType: 'gradient' | 'image' | 'video';

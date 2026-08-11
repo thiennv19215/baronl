@@ -18,6 +18,8 @@ export const initialStageState: StageState = {
     bambooAutoRestart: true,
     bambooLikePower: 0.08,
     bambooGiftPower: 0.8,
+    bambooGreenCharacter: 'bear',
+    bambooOrangeCharacter: 'dog',
     theme: 'cosmos',
     transparent: false,
     backgroundType: 'gradient',

@@ -268,7 +268,7 @@ function App() {
 
   return <main className={`stage-viewport quality-${quality} ${state.appearance.transparent ? 'transparent' : ''}`}>
     {state.appearance.gameMode === 'bamboo-battle'
-      ? <BambooBattle state={battleState} connection={state.connection} viewerCount={state.viewerCount}/>
+      ? <BambooBattle state={battleState} connection={state.connection} viewerCount={state.viewerCount} greenCharacter={state.appearance.bambooGreenCharacter} orangeCharacter={state.appearance.bambooOrangeCharacter}/>
       :
     <section className={`stage theme-${state.appearance.theme} ${state.appearance.threeDEnabled ? 'dance-floor-mode' : ''} floor-${state.appearance.danceFloorStyle}`} style={backgroundStyle} aria-label="Sân khấu OrbitStage LIVE">
       {state.appearance.backgroundType === 'video' && backgroundSource && <video className="stage-video" src={backgroundSource} autoPlay muted loop playsInline/>}

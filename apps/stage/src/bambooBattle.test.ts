@@ -42,4 +42,12 @@ describe('bamboo battle', () => {
     state = bambooBattleReducer(state, { type: 'event', event: { type: 'game_action', timestamp: 70_000, payload: { action: 'restart' } } });
     expect(state).toMatchObject({ status: 'playing', round: 2, startedAt: 70_000 });
   });
+
+  it('ends the round early when one team is pushed to the river edge', () => {
+    let state = bambooBattleReducer(createInitialBambooState(), { type: 'start', now: 0 });
+    state = bambooBattleReducer(state, { type: 'event', event: { type: 'chat', timestamp: 100, payload: { userId: 'bear', comment: '1' } } });
+    state = bambooBattleReducer(state, { type: 'event', event: { type: 'gift', timestamp: 200, payload: { userId: 'bear', giftName: 'Knockout', count: 1, diamonds: 1_000 } } });
+    expect(state).toMatchObject({ status: 'finished', winner: 'green', remainingMs: 0 });
+    expect(state.position).toBeGreaterThanOrEqual(44);
+  });
 });

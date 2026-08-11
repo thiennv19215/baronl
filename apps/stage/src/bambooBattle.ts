@@ -46,6 +46,10 @@ export type BambooBattleAction =
 const defaultSettings: BambooBattleSettings = { roundSeconds: 60, autoRestart: true, likePower: 0.08, giftPower: 0.8 };
 const emptyTeams = (): BambooBattleState['teams'] => ({ green: { power: 0, likes: 0, gifts: 0 }, orange: { power: 0, likes: 0, gifts: 0 } });
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+const tugPosition = (greenPower: number, orangePower: number): number => {
+  const total = greenPower + orangePower;
+  return clamp(((greenPower - orangePower) / (total + 8)) * 46, -46, 46);
+};
 const numberValue = (value: unknown, fallback = 0): number => {
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -79,15 +83,22 @@ function eventViewer(payload: Record<string, unknown>): { id: string; name: stri
 }
 
 function addPower(state: BambooBattleState, player: BambooPlayer, kind: 'like' | 'gift', amount: number, likes: number, gifts: number, label: string, timestamp: number): BambooBattleState {
-  const direction = player.team === 'green' ? 1 : -1;
-  const push = clamp(amount / 5, 0.4, 18);
   const updatedPlayer = { ...player, contribution: player.contribution + amount, likes: player.likes + likes, gifts: player.gifts + gifts };
   const teamStats = state.teams[player.team];
+  const updatedTeams = { ...state.teams, [player.team]: { power: teamStats.power + amount, likes: teamStats.likes + likes, gifts: teamStats.gifts + gifts } };
+  const updatedPosition = tugPosition(updatedTeams.green.power, updatedTeams.orange.power);
+  const knockout = Math.abs(updatedPosition) >= 44;
   return {
     ...state,
-    position: clamp(state.position + direction * push, -46, 46),
+    position: updatedPosition,
+    ...(knockout ? {
+      status: 'finished' as const,
+      remainingMs: 0,
+      winner: updatedPosition > 0 ? 'green' as const : 'orange' as const,
+      nextRoundAt: state.settings.autoRestart ? timestamp + 8_000 : undefined,
+    } : {}),
     players: { ...state.players, [player.id]: updatedPlayer },
-    teams: { ...state.teams, [player.team]: { power: teamStats.power + amount, likes: teamStats.likes + likes, gifts: teamStats.gifts + gifts } },
+    teams: updatedTeams,
     impact: { id: `${timestamp}-${player.id}-${kind}`, team: player.team, kind, name: player.name, label, power: amount, at: timestamp },
   };
 }
@@ -127,10 +138,12 @@ export function bambooBattleReducer(state: BambooBattleState, action: BambooBatt
     if (!team) return state;
     const joined: BambooPlayer = { ...viewer, team, contribution: 3, likes: 0, gifts: 0, joinedAt: timestamp };
     const teamStats = state.teams[team];
+    const updatedTeams = { ...state.teams, [team]: { ...teamStats, power: teamStats.power + 3 } };
     return {
       ...state,
+      position: tugPosition(updatedTeams.green.power, updatedTeams.orange.power),
       players: { ...state.players, [joined.id]: joined },
-      teams: { ...state.teams, [team]: { ...teamStats, power: teamStats.power + 3 } },
+      teams: updatedTeams,
       impact: { id: `${timestamp}-${joined.id}-join`, team, kind: 'join', name: joined.name, label: `vào phe ${team === 'green' ? 'Xanh' : 'Cam'}`, power: 3, at: timestamp },
     };
   }

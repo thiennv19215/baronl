@@ -23,6 +23,8 @@ export const defaultConfig: AppConfig = {
     bambooAutoRestart: true,
     bambooLikePower: 0.08,
     bambooGiftPower: 0.8,
+    bambooGreenCharacter: 'bear',
+    bambooOrangeCharacter: 'dog',
     theme: 'cosmos',
     backgroundType: 'gradient',
     backgroundSource: '',
