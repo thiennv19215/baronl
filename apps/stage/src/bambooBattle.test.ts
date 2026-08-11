@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { bambooBattleReducer, createInitialBambooState } from './bambooBattle';
+import { resolveGiftSkill } from './bambooBattleEffects';
 
 describe('bamboo battle', () => {
   it('joins teams from comments and applies likes and gifts to the chosen team', () => {
@@ -11,6 +12,7 @@ describe('bamboo battle', () => {
     expect(state.teams.green.likes).toBe(100);
     expect(state.teams.green.gifts).toBe(2);
     expect(state.position).toBeGreaterThan(0);
+    expect(state.impact?.skill).toBe('jab');
   });
 
   it('locks a viewer to one team for the round and ignores unassigned gifts', () => {
@@ -33,6 +35,7 @@ describe('bamboo battle', () => {
     state = bambooBattleReducer(state, { type: 'tick', now: nextRoundAt });
     expect(state).toMatchObject({ status: 'playing', round: 2, position: 0 });
     expect(Object.keys(state.players)).toHaveLength(0);
+    expect(state.effects).toHaveLength(0);
   });
 
   it('starts a new round manually after a finished round', () => {
@@ -49,5 +52,24 @@ describe('bamboo battle', () => {
     state = bambooBattleReducer(state, { type: 'event', event: { type: 'gift', timestamp: 200, payload: { userId: 'bear', giftName: 'Knockout', count: 1, diamonds: 1_000 } } });
     expect(state).toMatchObject({ status: 'finished', winner: 'green', remainingMs: 0 });
     expect(state.position).toBeGreaterThanOrEqual(44);
+    expect(state.impact?.skill).toBe('ultimate');
+  });
+
+  it('maps gift value to visually distinct attacks', () => {
+    expect(resolveGiftSkill(1)).toBe('jab');
+    expect(resolveGiftSkill(10)).toBe('combo');
+    expect(resolveGiftSkill(100)).toBe('heavy');
+    expect(resolveGiftSkill(1_000)).toBe('ultimate');
+  });
+
+  it('keeps a bounded effect queue instead of overwriting rapid gifts', () => {
+    let state = bambooBattleReducer(createInitialBambooState(), { type: 'start', now: 0 });
+    state = bambooBattleReducer(state, { type: 'event', event: { type: 'chat', timestamp: 1, payload: { userId: 'fighter', comment: '1' } } });
+    for (let index = 0; index < 20; index += 1) {
+      state = bambooBattleReducer(state, { type: 'event', event: { type: 'gift', timestamp: 100 + index, payload: { userId: 'fighter', giftName: 'Rose', count: 1, diamonds: 1 } } });
+      if (state.status === 'finished') break;
+    }
+    expect(state.effects.length).toBeLessThanOrEqual(12);
+    expect(state.effects.length).toBeGreaterThan(1);
   });
 });
