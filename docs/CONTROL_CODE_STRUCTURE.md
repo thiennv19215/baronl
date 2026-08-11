@@ -6,35 +6,34 @@ This document explains where Control Room code lives and how to extend it withou
 
 ```text
 apps/control/src/
-├─ main.tsx                 # renderer bootstrap; mounts App + active feature roots
-├─ App.tsx                  # existing Control Room shell and non-game screens
+├─ main.tsx                 # renderer bootstrap; mounts one App root
+├─ App.tsx                  # Control shell, routing, shared config/runtime state
 ├─ bridge.ts                # typed renderer bridge to Electron preload/Main
 ├─ types.ts                 # renderer-facing shared types
 ├─ lib/
 │  └─ model.ts              # config defaults/merge helpers
 ├─ features/
-│  └─ games/                # active Game Store and per-game management feature
-└─ styles.css               # existing global Control Room styles
+│  └─ games/                # Game Store + per-game management screens
+└─ styles.css               # global Control Room styles
 ```
 
-The Game feature is intentionally isolated under `features/games`. New game UI should not be added back into the large root `App.tsx`.
+`main.tsx` mounts only `App`. Feature screens are routed by `App.tsx`; they do not mount independent React roots or overlay the shell.
 
 ## Game feature
 
 ```text
 apps/control/src/features/games/
 ├─ index.ts
-├─ GameHubRoot.tsx
 ├─ GameHubScreen.tsx
 ├─ gameCatalog.ts
 ├─ types.ts
 ├─ README.md
 ├─ components/
 │  ├─ GameCover.tsx
+│  ├─ GamePageHeader.tsx
 │  └─ GameUi.tsx
 ├─ styles/
-│  ├─ game-hub.css
-│  └─ game-hub-overlay.css
+│  └─ game-hub.css
 ├─ dance-floor/
 │  └─ DanceFloorManager.tsx
 └─ bamboo-battle/
@@ -43,41 +42,41 @@ apps/control/src/features/games/
    └─ battleBots.ts
 ```
 
-### `GameHubRoot.tsx`
+### Routing boundary
 
-Owns feature-level infrastructure only:
+`App.tsx` owns `screen`, config state, runtime state, `patchConfig`, notifications and the shared sidebar/topbar. For the Game route it renders:
 
-- reads the current config from `bridge.config()`;
-- subscribes to config changes;
-- saves config patches;
-- shows loading and toast state;
-- renders `GameHubScreen`.
+```tsx
+screen === 'games' && (
+  <GameHubScreen config={config} patch={patchConfig} notify={notify} />
+)
+```
 
-It must not know how Game 01 or Game 02 works.
+Because `GameHubScreen` only exists while the Game route is active, leaving the Game tab unmounts its local manager-navigation state. Returning to Game always starts at the two-card Store.
 
 ### `GameHubScreen.tsx`
 
-Owns navigation only:
+Owns Game workspace navigation only:
 
-- renders the Store cards;
-- remembers which game management page is open;
+- renders installed Store cards;
+- remembers which game screen is open while the Game route is active;
 - shows which game is active on Stage;
-- exposes the explicit `Kích hoạt game này` action;
-- delegates settings UI to the selected game's manager.
+- exposes the explicit `Kích hoạt game này` action through each game page;
+- delegates settings/test UI to the selected game manager.
 
-Do not add Bamboo-specific fake-event logic here.
+It must not contain Dance Floor/Bamboo-specific settings or fake-event behavior.
 
 ### `gameCatalog.ts`
 
-Single source of truth for installed game metadata shown in the Store: id, display order, title, description and tag.
+Single source of truth for installed-game metadata shown in the Store: id, display order, title, description and tag.
 
 ### `components/`
 
-Contains presentation shared by more than one game. These components must not contain game rules.
+Presentation shared by more than one game. Shared components must not contain gameplay rules.
 
 ### `dance-floor/`
 
-Everything specific to Game 01 Control UI lives here. `DanceFloorManager.tsx` owns only Dance Floor settings; Stage rendering remains in the Stage app.
+Everything specific to Game 01 Control UI lives here. Stage rendering remains in the Stage app.
 
 ### `bamboo-battle/`
 
@@ -85,9 +84,9 @@ Everything specific to Game 02 Control UI lives here:
 
 - `BambooBattleManager.tsx`: settings and test controls;
 - `useBattleTester.ts`: fake-player/event simulation behavior;
-- `battleBots.ts`: test fixture data only.
+- `battleBots.ts`: test fixture names only.
 
-Actual Bamboo Battle gameplay/rendering remains in `apps/stage/src`.
+Actual Bamboo Battle reducer/rendering remains in `apps/stage/src`.
 
 ## Cross-app boundary
 
@@ -103,41 +102,44 @@ Stage
    └─ Bamboo Battle gameplay/rendering
 ```
 
-Control should configure and test games. It should not duplicate Stage gameplay state or rendering logic.
+Control configures and tests games. It must not duplicate Stage gameplay state or rendering logic.
 
 ## Rules for adding a new game
 
 1. Add the id to `GameId` in `features/games/types.ts`.
-2. Add its Store metadata to `features/games/gameCatalog.ts`.
+2. Add Store metadata to `features/games/gameCatalog.ts`.
 3. Create a dedicated directory such as `features/games/game-03/`.
-4. Put that game's Control UI in its manager component.
+4. Put the game's Control UI in its manager component.
 5. Put game-specific test helpers beside that manager.
 6. Add one manager dispatch in `GameHubScreen.tsx`.
-7. Keep gameplay/rendering in `apps/stage`, not in Control.
+7. Extend the Stage/service runtime for the new `gameMode`.
 8. Never make opening a Store card switch the LIVE game automatically.
+9. Extend Playwright coverage for Store → game → back and route exit/re-entry.
 
 ## Naming convention
 
 Use feature-first names instead of generic names:
 
 - good: `BambooBattleManager.tsx`, `useBattleTester.ts`, `DanceFloorManager.tsx`;
-- avoid: `Game2.tsx`, `helpers.ts`, `utils2.ts`, `data.ts` when the responsibility is not obvious.
+- avoid: `Game2.tsx`, `helpers.ts`, `utils2.ts`, `data.ts` when responsibility is unclear.
 
-A new contributor should be able to infer a file's purpose from its path and filename without opening it.
+A contributor should be able to infer a file's purpose from its path and filename without opening it.
 
 ## CI validation
 
 `.github/workflows/ci.yml` validates pull requests with Node 22.12.0:
 
-1. install dependencies with `npm ci`;
-2. run workspace TypeScript checks;
-3. build `@orbitstage/shared` so workspace tests can resolve its `dist` entry;
-4. run the full Vitest suite;
-5. run the asset registry audit as a separate diagnostic;
-6. build `shared`, `live-service`, `control`, `stage`, and `desktop` individually.
+1. `npm ci`;
+2. workspace TypeScript checks;
+3. build `@orbitstage/shared` for workspace tests;
+4. full Vitest suite;
+5. required asset registry audit;
+6. builds for `shared`, `live-service`, `control`, `stage`, and `desktop`;
+7. Playwright browser smoke test for the Control Game workspace;
+8. upload UI screenshots/report artifacts.
 
-The code-build steps are intentionally separate from the asset registry audit. A stale asset manifest should remain visible as a repository-maintenance issue without hiding whether Control/Stage code itself compiles.
+The asset registry audit is a hard CI gate. Bytes/hash drift must fail the workflow.
 
-## Current migration note
+## Current migration state
 
-`App.tsx` still contains older Control Room screen code from before the feature split. The active Game Store implementation is `features/games`; do not add new game functionality to the older game section in `App.tsx`. Future cleanup can migrate the remaining non-game screens into their own `features/*` directories using the same pattern.
+The old Game implementation has been removed from `App.tsx`. `features/games` is the only Control implementation for Game 01 / Game 02 management. The remaining non-game screens are still defined in `App.tsx` and can be migrated into their own `features/*` directories later without affecting the Game boundary.
