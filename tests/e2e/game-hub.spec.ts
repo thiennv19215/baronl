@@ -14,7 +14,7 @@ test('Game workspace is a two-card store and each card opens a dedicated screen'
 
   await page.getByRole('button', { name: /^Game/ }).click();
 
-  const store = page.getByLabel('OrbitStage Game Store');
+  let store = page.getByLabel('OrbitStage Game Store');
   await expect(store).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Game', exact: true })).toBeVisible();
   await expect(store.getByRole('heading', { name: 'Chọn game để quản lý' })).toHaveCount(0);
@@ -44,6 +44,18 @@ test('Game workspace is a two-card store and each card opens a dedicated screen'
   await expect(store.locator('.game-store-card')).toHaveCount(0);
   await expect(store.getByRole('heading', { name: 'Sàn nhảy tương tác', exact: true })).toHaveCount(0);
   await page.screenshot({ path: 'ui-snapshots/bamboo-battle-manager.png', fullPage: true });
+
+  // Leaving Game unmounts the feature. Returning must always reopen the two-card Store.
+  await page.getByRole('button', { name: /^Tùy chỉnh/ }).click();
+  await expect(page.getByLabel('OrbitStage Game Store')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Tùy chỉnh sân khấu', exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: /^Game/ }).click();
+  store = page.getByLabel('OrbitStage Game Store');
+  await expect(store).toBeVisible();
+  await expect(store.locator('.game-store-card')).toHaveCount(2);
+  await expect(store.getByRole('heading', { name: 'Bamboo Battle', exact: true })).toHaveCount(1);
+  await expect(store.getByText('Luật & kiểm thử Bamboo Battle', { exact: true })).toHaveCount(0);
 
   expect(pageErrors).toEqual([]);
 });
