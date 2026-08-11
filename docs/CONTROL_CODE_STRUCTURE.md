@@ -32,6 +32,9 @@ apps/control/src/features/games/
 ├─ components/
 │  ├─ GameCover.tsx
 │  └─ GameUi.tsx
+├─ styles/
+│  ├─ game-hub.css
+│  └─ game-hub-overlay.css
 ├─ dance-floor/
 │  └─ DanceFloorManager.tsx
 └─ bamboo-battle/
@@ -71,6 +74,10 @@ Single source of truth for installed game metadata shown in the Store: id, displ
 ### `components/`
 
 Contains presentation shared by more than one game. These components must not contain game rules.
+
+### `styles/`
+
+Contains CSS owned only by the Game feature. Game-specific styles should stay beside the feature instead of being added to the Control root.
 
 ### `dance-floor/`
 
