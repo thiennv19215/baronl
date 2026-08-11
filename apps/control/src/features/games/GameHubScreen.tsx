@@ -21,49 +21,55 @@ export function GameHubScreen({ config, patch, notify }: GameManagerProps) {
   };
 
   if (!managedGame) {
-    return <div className="game-store-only" aria-label="Kho game đã cài">
-      <div className="game-store-grid">
-        {gameCatalog.map((game) => {
-          const active = stage.gameMode === game.id;
-          return <button
-            type="button"
-            className={`game-store-card ${game.id} ${active ? 'active' : ''}`}
-            key={game.id}
-            onClick={() => setManagedGame(game.id)}
-          >
-            <GameCover id={game.id}/>
-            <div className="game-store-card-copy">
-              <div className="game-store-meta"><span>{game.order}</span><em>{game.tag}</em></div>
-              <h2>{game.title}</h2>
-              <p>{game.description}</p>
-              <div className="game-store-footer">
-                <span className={active ? 'running' : 'ready'}><i/>{active ? 'ĐANG CHẠY' : 'SẴN SÀNG'}</span>
-                <b>Mở game →</b>
+    return <section className="game-hub-feature" aria-label="OrbitStage Game Store">
+      <div className="game-store-only" aria-label="Kho game đã cài">
+        <div className="game-store-grid">
+          {gameCatalog.map((game) => {
+            const active = stage.gameMode === game.id;
+            return <button
+              type="button"
+              className={`game-store-card ${game.id} ${active ? 'active' : ''}`}
+              key={game.id}
+              onClick={() => setManagedGame(game.id)}
+            >
+              <GameCover id={game.id}/>
+              <div className="game-store-card-copy">
+                <div className="game-store-meta"><span>{game.order}</span><em>{game.tag}</em></div>
+                <h2>{game.title}</h2>
+                <p>{game.description}</p>
+                <div className="game-store-footer">
+                  <span className={active ? 'running' : 'ready'}><i/>{active ? 'ĐANG CHẠY' : 'SẴN SÀNG'}</span>
+                  <b>Mở game →</b>
+                </div>
               </div>
-            </div>
-          </button>;
-        })}
+            </button>;
+          })}
+        </div>
       </div>
-    </div>;
+    </section>;
   }
 
   if (managedGame === 'dance-floor') {
-    return <DanceFloorManager
+    return <section className="game-hub-feature" aria-label="OrbitStage Game Store">
+      <DanceFloorManager
+        config={config}
+        patch={patch}
+        notify={notify}
+        active={stage.gameMode === 'dance-floor'}
+        onBack={() => setManagedGame(undefined)}
+        onActivate={() => activateGame('dance-floor')}
+      />
+    </section>;
+  }
+
+  return <section className="game-hub-feature" aria-label="OrbitStage Game Store">
+    <BambooBattleManager
       config={config}
       patch={patch}
       notify={notify}
-      active={stage.gameMode === 'dance-floor'}
+      active={stage.gameMode === 'bamboo-battle'}
       onBack={() => setManagedGame(undefined)}
-      onActivate={() => activateGame('dance-floor')}
-    />;
-  }
-
-  return <BambooBattleManager
-    config={config}
-    patch={patch}
-    notify={notify}
-    active={stage.gameMode === 'bamboo-battle'}
-    onBack={() => setManagedGame(undefined)}
-    onActivate={() => activateGame('bamboo-battle')}
-  />;
+      onActivate={() => activateGame('bamboo-battle')}
+    />
+  </section>;
 }
