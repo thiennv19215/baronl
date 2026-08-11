@@ -29,6 +29,11 @@ export class SecretStore {
   }
 
   async get(name: SecretName): Promise<string | undefined> {
+    if (process.env.ORBITSTAGE_E2E === "1" && name === "aiApiKey") {
+      const override = process.env.ORBITSTAGE_E2E_AI_KEY?.trim();
+      if (override) return override;
+    }
+
     const encoded = (await this.readDocument())[name];
     if (!encoded || !safeStorage.isEncryptionAvailable()) return undefined;
     try {

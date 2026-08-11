@@ -1,0 +1,3 @@
+# Keep the cultivation asset map byte-stable across Windows and Linux checkouts.
+# Its registered asset hash/size were created from CRLF bytes.
+assets/cultivation-titles/cultivation-title-assets.json text eol=crlf
