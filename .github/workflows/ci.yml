@@ -63,8 +63,8 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: UI smoke tests
-        run: npx playwright test
+      - name: Browser and Electron E2E
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1440x1000x24" npx playwright test
 
       - name: Upload UI screenshots
         if: always()
