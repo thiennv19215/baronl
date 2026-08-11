@@ -31,13 +31,13 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Build
+        run: npm run build
+
       - name: Unit and integration tests
         run: |
           npm test
           npm run test:integration
-
-      - name: Build
-        run: npm run build
 
       - name: Install Linux runtime dependencies for Electron
         run: |
