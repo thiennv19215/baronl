@@ -6,15 +6,21 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const softwareGpuArgs = [
+  projectRoot,
+  '--use-gl=swiftshader',
+  '--enable-unsafe-swiftshader',
+  '--disable-gpu-sandbox',
+];
 
-test('Electron Stage resolves to the Stage BrowserWindow and bootstraps its React root', async () => {
+test('Electron Stage resolves to the Stage BrowserWindow and boots with software WebGL', async () => {
   const userDataDirectory = await mkdtemp(path.join(tmpdir(), 'orbitstage-stage-diagnostic-'));
   const launchEnvironment = { ...process.env };
   delete launchEnvironment.ELECTRON_RUN_AS_NODE;
   launchEnvironment.ORBITSTAGE_E2E = '1';
   launchEnvironment.ORBITSTAGE_USER_DATA = userDataDirectory;
 
-  const app = await electron.launch({ args: [projectRoot], cwd: projectRoot, env: launchEnvironment, timeout: 30_000 });
+  const app = await electron.launch({ args: softwareGpuArgs, cwd: projectRoot, env: launchEnvironment, timeout: 30_000 });
   try {
     const control = await app.firstWindow();
     await control.waitForLoadState('domcontentloaded');
@@ -65,10 +71,11 @@ test('Electron Stage resolves to the Stage BrowserWindow and bootstraps its Reac
       scripts: Array.from(document.scripts).map((script) => script.src || '<inline>'),
     }));
     const stageObserved = observed.find((entry) => entry.page === stagePage);
+    const diagnostics = JSON.stringify({ browserWindow: stageEntry.browserWindow, dom, errors: stageObserved?.errors, console: stageObserved?.console });
 
-    await expect(stagePage.locator('.stage-viewport'), {
-      message: `Stage bootstrap diagnostics: ${JSON.stringify({ browserWindow: stageEntry.browserWindow, dom, errors: stageObserved?.errors, console: stageObserved?.console })}`,
-    }).toBeVisible({ timeout: 10_000 });
+    await expect(stagePage.locator('.stage'), { message: `Stage diagnostics: ${diagnostics}` }).toBeVisible({ timeout: 10_000 });
+    await expect(stagePage.locator('.three-stage canvas'), { message: `Three.js diagnostics: ${diagnostics}` }).toBeVisible({ timeout: 10_000 });
+    expect(stageObserved?.errors ?? []).toEqual([]);
   } finally {
     await app.close().catch(() => undefined);
     await rm(userDataDirectory, { recursive: true, force: true });
