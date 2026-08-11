@@ -71,6 +71,7 @@ const numberValue = (value: unknown, fallback = 0): number => {
 const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const stringValue = (value: unknown, fallback = ''): string => typeof value === 'string' ? value : value == null ? fallback : String(value);
 const safeId = (value: string): string => value.trim().toLowerCase().replace(/[^a-z0-9_.-]+/g, '-') || 'guest';
+const effectValueKey = (value: number): string => Math.round(value * 1_000).toString(36);
 
 export function createInitialBambooState(): BambooBattleState {
   return { status: 'waiting', round: 0, startedAt: 0, endsAt: 0, remainingMs: defaultSettings.roundSeconds * 1_000, position: 0, players: {}, teams: emptyTeams(), effects: [], settings: { ...defaultSettings } };
@@ -107,7 +108,7 @@ function addPower(state: BambooBattleState, player: BambooPlayer, kind: 'like' |
   const updatedPosition = tugPosition(updatedTeams.green.power, updatedTeams.orange.power);
   const knockout = Math.abs(updatedPosition) >= 44;
   const effect: BambooBattleEffect = {
-    id: `${timestamp}-${player.id}-${kind}-${state.effects.length}`,
+    id: `${timestamp}-${player.id}-${kind}-${effectValueKey(updatedPlayer.contribution)}-${effectValueKey(updatedTeams[player.team].power)}`,
     team: player.team,
     kind,
     skill: kind === 'gift' ? resolveGiftSkill(diamonds) : 'pulse',
@@ -168,7 +169,17 @@ export function bambooBattleReducer(state: BambooBattleState, action: BambooBatt
     const joined: BambooPlayer = { ...viewer, team, contribution: 3, likes: 0, gifts: 0, joinedAt: timestamp };
     const teamStats = state.teams[team];
     const updatedTeams = { ...state.teams, [team]: { ...teamStats, power: teamStats.power + 3 } };
-    const effect: BambooBattleEffect = { id: `${timestamp}-${joined.id}-join-${state.effects.length}`, team, kind: 'join', skill: 'join', name: joined.name, label: `vào phe ${team === 'green' ? 'Xanh' : 'Cam'}`, power: 3, diamonds: 0, at: timestamp };
+    const effect: BambooBattleEffect = {
+      id: `${timestamp}-${joined.id}-join-${effectValueKey(updatedTeams[team].power)}`,
+      team,
+      kind: 'join',
+      skill: 'join',
+      name: joined.name,
+      label: `vào phe ${team === 'green' ? 'Xanh' : 'Cam'}`,
+      power: 3,
+      diamonds: 0,
+      at: timestamp,
+    };
     return {
       ...state,
       position: tugPosition(updatedTeams.green.power, updatedTeams.orange.power),
