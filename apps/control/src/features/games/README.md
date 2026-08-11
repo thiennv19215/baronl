@@ -11,9 +11,13 @@ features/games/
 ├─ GameHubScreen.tsx                # store navigation and game selection only
 ├─ gameCatalog.ts                   # installed game metadata
 ├─ types.ts                         # shared game feature types
+├─ README.md                        # local ownership rules
 ├─ components/
 │  ├─ GameCover.tsx                 # visual cover used by store/header
 │  └─ GameUi.tsx                    # shared Panel / Field / Toggle primitives
+├─ styles/
+│  ├─ game-hub.css                  # Store + manager presentation
+│  └─ game-hub-overlay.css          # mounting/overlay layout + toast/loading
 ├─ dance-floor/
 │  └─ DanceFloorManager.tsx         # Game 01 settings UI only
 └─ bamboo-battle/
@@ -29,6 +33,7 @@ features/games/
 - Each game owns its settings UI inside its own directory.
 - Test/simulation logic belongs next to the game that uses it, not in the hub.
 - Shared presentational controls belong in `components/`.
+- Feature-specific CSS belongs in `styles/`, not at `apps/control/src/` root.
 - External code should import the feature through `features/games/index.ts`.
 
 ## Adding Game 03
