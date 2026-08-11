@@ -6,7 +6,7 @@ import { GamePanel } from './components/GameUi';
 import { DanceFloorManager } from './dance-floor/DanceFloorManager';
 import { gameCatalog, getGameDefinition } from './gameCatalog';
 import type { GameId, GameManagerProps } from './types';
-import '../../game-hub.css';
+import './styles/game-hub.css';
 
 export function GameHubScreen({ config, patch, notify }: GameManagerProps) {
   const stage = config.stage;
