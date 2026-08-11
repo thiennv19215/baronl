@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { bridge } from './bridge';
+import { GameHubScreen } from './features/games';
 import { defaultConfig, defaultSnapshot, formatUptime, mergeConfig } from './lib/model';
 import type {
   AppConfig,
@@ -227,9 +228,7 @@ function App() {
         {loading ? <LoadingState/> : <>
           {screen === 'live' && <LiveScreen config={config} runtime={runtime} patch={patchConfig} notify={notify}/>} 
           {screen === 'led' && <LedScreen config={config} patch={patchConfig}/>} 
-          {screen === 'games' && (
-            <GamesScreen config={config} patch={patchConfig} notify={notify} />
-          )}
+          {screen === 'games' && <GameHubScreen config={config} patch={patchConfig} notify={notify}/>} 
           {screen === 'customize' && <CustomizeScreen config={config} patch={patchConfig} notify={notify}/>} 
           {screen === 'characters' && <CharactersScreen config={config} runtime={runtime} patch={patchConfig} notify={notify}/>} 
           {screen === 'ai' && <AiScreen config={config} patch={patchConfig} notify={notify}/>} 
@@ -343,162 +342,6 @@ function LedScreen({ config, patch }: ScreenProps) {
       <div className="swatch-row">{['#8b5cf6','#22d3ee','#f472b6','#a3e635','#fb923c'].map((color) => <button key={color} style={{ background: color }} aria-label={`Chọn ${color}`} onClick={() => setDraft({ ...draft, glowColor: color })}/>)}</div>
       <div className="card-actions"><button className="button ghost" onClick={() => setDraft(config.led)}>Hoàn tác</button><button className="button primary" onClick={() => void patch('led', draft, 'Đã áp dụng LED lên stage.')}>Áp dụng lên Stage</button></div>
     </Card>
-  </div>;
-}
-
-const gameCatalog = [
-  {
-    id: 'dance-floor',
-    order: 'GAME 01',
-    title: 'Sàn nhảy tương tác',
-    description: 'Sân khấu hiện tại với dancer, âm nhạc, quà tặng và hiệu ứng LIVE.',
-    status: 'ready',
-  },
-  {
-    id: 'bamboo-battle',
-    order: 'GAME 02',
-    title: 'Đại chiến bờ sông',
-    description: 'Gấu hoặc chó con đấu lực trên cầu 3D; phe bị ép rơi xuống sông sẽ thua.',
-    status: 'ready',
-  },
-] as const;
-
-const battleBotNames = [
-  'An Nhiên', 'Bảo Long', 'Cá Mập Con', 'Diệu Linh', 'Gia Huy', 'Hải Yến', 'Khánh Vy', 'Linh Miu', 'Minh Anh',
-  'Nam Phong', 'Ngọc Bích', 'Panda Mập', 'Quỳnh Chi', 'Ryan Fan', 'Sky Nguyễn', 'Thanh Tâm', 'Trúc Xinh', 'Tuấn Kiệt',
-  'Uyên Nhi', 'Vân Mây', 'Xuân Mai', 'Yến Nhi', 'Zin Cool', 'Bé Bông', 'Cún Nhỏ', 'Đậu Đỏ', 'Gấu Trúc', 'Hana',
-  'Ken Live', 'Mèo Mun', 'Nắng Hạ', 'Phúc An', 'Sao Khuya', 'Tí Nâu', 'Vũ Minh', 'Yumi',
-] as const;
-
-function GamesScreen({ config, patch, notify }: ScreenProps & { notify: (message: string, tone?: 'ok' | 'warn' | 'error') => void }) {
-  const stage = config.stage;
-  const [testing, setTesting] = useState<BambooTeam>();
-  const [botRunning, setBotRunning] = useState(false);
-  const [botCount, setBotCount] = useState(24);
-  const [botEvents, setBotEvents] = useState(0);
-  const botTimer = useRef<number>();
-  type BambooTeam = 'green' | 'orange';
-  const stopBotBattle = () => {
-    if (botTimer.current) window.clearInterval(botTimer.current);
-    botTimer.current = undefined;
-    setBotRunning(false);
-  };
-  useEffect(() => () => { if (botTimer.current) window.clearInterval(botTimer.current); }, []);
-  const startBotBattle = async () => {
-    stopBotBattle();
-    const roster = battleBotNames.slice(0, botCount).map((name, index) => ({ id: `battle-bot-${index + 1}`, name, level: 5 + index % 35, team: index % 2 === 0 ? 'green' as const : 'orange' as const }));
-    try {
-      await patch('stage', { gameMode: 'bamboo-battle' });
-      await bridge.openStage();
-      await bridge.gameAction('restart');
-      await Promise.all(roster.map((bot) => bridge.fakeEvent({ type: 'chat', viewer: bot, message: bot.team === 'green' ? '1' : '2' })));
-      setBotEvents(roster.length);
-      setBotRunning(true);
-      botTimer.current = window.setInterval(() => {
-        const bot = roster[Math.floor(Math.random() * roster.length)];
-        if (!bot) return;
-        void (async () => {
-          await bridge.fakeEvent({ type: 'chat', viewer: bot, message: bot.team === 'green' ? '1' : '2' });
-          if (Math.random() < 0.2) {
-            const diamonds = [1, 5, 10, 20][Math.floor(Math.random() * 4)] ?? 1;
-            await bridge.fakeEvent({ type: 'gift', viewer: bot, giftName: diamonds >= 10 ? 'Tim pha lê' : 'Hoa hồng', giftCount: 1 + Math.floor(Math.random() * 3), diamonds });
-          } else {
-            await bridge.fakeEvent({ type: 'like', viewer: bot, likeCount: 10 + Math.floor(Math.random() * 111) });
-          }
-          setBotEvents((count) => count + 2);
-        })().catch(() => stopBotBattle());
-      }, 650);
-      notify(`Đã thêm ${roster.length} người chơi giả vào hai phe.`);
-    } catch (error) {
-      stopBotBattle();
-      notify(error instanceof Error ? error.message : 'Không thể bật người chơi giả.', 'error');
-    }
-  };
-  const testBattle = async (team: BambooTeam) => {
-    setTesting(team);
-    const number = team === 'green' ? '1' : '2';
-    const viewer = { id: `battle-test-${team}`, name: team === 'green' ? 'Chiến Binh Xanh' : 'Chiến Binh Cam', level: 12 };
-    try {
-      await patch('stage', { gameMode: 'bamboo-battle' });
-      await bridge.openStage();
-      await bridge.fakeEvent({ type: 'chat', viewer, message: number });
-      await bridge.fakeEvent({ type: 'like', viewer, likeCount: 120 });
-      await bridge.fakeEvent({ type: 'gift', viewer, giftName: 'Hoa hồng thử nghiệm', giftCount: 3, diamonds: 10 });
-      notify(`Đã thử lực đẩy cho phe ${team === 'green' ? 'Xanh' : 'Cam'}.`);
-    } catch (error) {
-      notify(error instanceof Error ? error.message : 'Không thể chạy thử Game 2.', 'error');
-    } finally { setTesting(undefined); }
-  };
-  return <div className="screen-grid games-grid">
-    <Card className="games-hero span-2">
-      <div className="games-hero-icon"><Icon name="games" size={28}/></div>
-      <div><span className="eyebrow">THƯ VIỆN GAME LIVE</span><h2>Mỗi game là một chế độ độc lập</h2><p>Sàn nhảy được giữ nguyên hoạt động. Game mới có thể bổ sung sau mà không trộn cài đặt giữa các trò chơi.</p></div>
-      <span className="game-count">02 <small>GAME</small></span>
-    </Card>
-
-    <div className="game-catalog span-2">
-      {gameCatalog.map((game) => { const selected = stage.gameMode === game.id; return <button type="button" key={game.id} className={`game-tile ${game.status} ${selected ? 'selected' : ''}`} onClick={() => void patch('stage', { gameMode: game.id })}>
-        <div className={`game-cover ${game.id}`} aria-hidden="true">
-          {game.id === 'dance-floor' ? <><i/><i/><i/><span>ORBIT LIVE</span><b/></> : <><i/><i/><span>1</span><span>2</span><b/></>}
-        </div>
-        <div className="game-tile-copy">
-          <div><span>{game.order}</span><em className={selected ? 'active' : 'ready'}>{selected ? 'ĐANG SỬ DỤNG' : 'SẴN SÀNG'}</em></div>
-          <h3>{game.title}</h3><p>{game.description}</p>
-          <small>{selected ? 'Cấu hình bên dưới' : 'Nhấn để chọn game này'}</small>
-        </div>
-      </button>})}
-    </div>
-
-    {stage.gameMode === 'dance-floor' ? <>
-    <Card className="stage-preset-card">
-      <CardTitle title="Giao diện Game 1" hint="Chọn kiểu sàn nhảy đang hiển thị trên Stage."/>
-      <div className="stage-preset-options">
-        {([['orbit', 'Orbit', 'Neon nguyên bản'], ['club', 'Club', 'Quán bar 3D · sàn gỗ'], ['prism', 'Arena', 'Sàn lưới · TOP 3 · đông dancer']] as const).map(([value, title, hint]) => <button key={value} type="button" className={stage.danceFloorStyle === value ? 'selected' : ''} onClick={() => void patch('stage', { danceFloorStyle: value })}><i/><span><strong>{title}</strong><small>{hint}</small></span>{stage.danceFloorStyle === value && <Icon name="check" size={14}/>}</button>)}
-      </div>
-    </Card>
-
-    <Card>
-      <CardTitle title="Cấu hình Sàn nhảy" hint="Các tùy chọn này chỉ thuộc Game 1."/>
-      <Field label="Chuyển động camera"><select value={stage.cameraMode} onChange={(e) => void patch('stage', { cameraMode: e.target.value as typeof stage.cameraMode })}><option value="ambient">Ambient · lia nhẹ</option><option value="cinematic">Cinematic · lia rộng</option><option value="locked">Locked · cố định</option></select></Field>
-      <Toggle checked={stage.threeDEnabled} onChange={(threeDEnabled) => void patch('stage', { threeDEnabled })} label="Bật Three.js" description="Tắt để chỉ dùng overlay 2D."/>
-      <Toggle checked={stage.floorBright} onChange={(floorBright) => void patch('stage', { floorBright })} label="Sàn nhảy phản ứng nhạc"/>
-      <Toggle checked={stage.lasers} onChange={(lasers) => void patch('stage', { lasers })} label="Laser & spotlight"/>
-      <Toggle checked={stage.ledScreens} onChange={(ledScreens) => void patch('stage', { ledScreens })} label="Màn LED 3D"/>
-      <Toggle checked={stage.topPodiums} onChange={(topPodiums) => void patch('stage', { topPodiums })} label="Bục TOP 1 / 2 / 3"/>
-      <Toggle checked={stage.autoFitCrowd} onChange={(autoFitCrowd) => void patch('stage', { autoFitCrowd })} label="Tự giãn khi đông" description="Tự thêm hàng, thu nhỏ nhân vật và giữ người mới/TOP trên sàn."/>
-      <div className="form-grid">
-        <Field label={`Số nhân vật tối đa · ${stage.maxFloorActors}`}><input type="range" min="8" max="80" step="1" value={stage.maxFloorActors} onChange={(event) => void patch('stage', { maxFloorActors: Number(event.target.value) })}/></Field>
-        <Field label={`Độ rộng sàn · ${stage.floorWidth}%`}><input type="range" min="80" max="110" step="1" value={stage.floorWidth} onChange={(event) => void patch('stage', { floorWidth: Number(event.target.value) })}/></Field>
-      </div>
-    </Card>
-    </> : <>
-    <Card>
-      <CardTitle title="Luật Game 2" hint="Sự kiện chạy trực tiếp từ TikFinity đang kết nối."/>
-      <div className="battle-rules">
-        <div><b>1</b><span><strong>Vào phe Xanh</strong><small>Người xem bình luận số 1</small></span></div>
-        <div><b>2</b><span><strong>Vào phe Cam</strong><small>Người xem bình luận số 2</small></span></div>
-        <div><b>♥</b><span><strong>Like tạo lực đẩy</strong><small>Chỉ tính sau khi đã chọn phe</small></span></div>
-        <div><b>🎁</b><span><strong>Quà tạo cú đẩy mạnh</strong><small>Sức mạnh dựa trên kim cương và combo</small></span></div>
-      </div>
-      <div className={`battle-bots ${botRunning ? 'running' : ''}`}>
-        <div className="battle-bot-status"><i/><span><strong>Người chơi giả tự động</strong><small>{botRunning ? `${botCount} người · ${botEvents} sự kiện đã phát` : 'Tự vào phe, thả tim và gửi quà để thử game'}</small></span></div>
-        <label><span>Số người · {botCount}</span><input type="range" min="6" max="36" step="2" value={botCount} disabled={botRunning} onChange={(event) => setBotCount(Number(event.target.value))}/></label>
-        <button type="button" className={`button ${botRunning ? 'danger' : 'primary'}`} onClick={() => botRunning ? stopBotBattle() : void startBotBattle()}>{botRunning ? 'Dừng mô phỏng' : 'Bắt đầu mô phỏng'}</button>
-      </div>
-      <div className="battle-test-actions"><button className="button secondary" disabled={Boolean(testing)} onClick={() => void testBattle('green')}>{testing === 'green' ? <span className="spinner"/> : null}Thử phe Xanh</button><button className="button secondary orange" disabled={Boolean(testing)} onClick={() => void testBattle('orange')}>{testing === 'orange' ? <span className="spinner"/> : null}Thử phe Cam</button><button className="button subtle" onClick={() => void bridge.gameAction('restart')}>Ván mới</button><button className="button subtle" onClick={() => void bridge.openStage()}>Mở Stage</button></div>
-    </Card>
-    <Card>
-      <CardTitle title="Cấu hình Đại chiến bờ sông" hint="Áp dụng từ ván mới hoặc sự kiện tiếp theo."/>
-      <div className="form-grid">
-        <Field label="Nhân vật phe Xanh"><select value={stage.bambooGreenCharacter} onChange={(event) => void patch('stage', { bambooGreenCharacter: event.target.value as typeof stage.bambooGreenCharacter })}><option value="bear">🐻 Gấu con</option><option value="dog">🐶 Chó con</option></select></Field>
-        <Field label="Nhân vật phe Cam"><select value={stage.bambooOrangeCharacter} onChange={(event) => void patch('stage', { bambooOrangeCharacter: event.target.value as typeof stage.bambooOrangeCharacter })}><option value="bear">🐻 Gấu con</option><option value="dog">🐶 Chó con</option></select></Field>
-      </div>
-      <Field label={`Thời gian mỗi ván · ${stage.bambooRoundSeconds} giây`}><input type="range" min="30" max="300" step="10" value={stage.bambooRoundSeconds} onChange={(event) => void patch('stage', { bambooRoundSeconds: Number(event.target.value) })}/></Field>
-      <Field label={`Sức mạnh Like · ${stage.bambooLikePower.toFixed(2)}`} hint="Mỗi lượt thích nhân với hệ số này."><input type="range" min="0.01" max="0.5" step="0.01" value={stage.bambooLikePower} onChange={(event) => void patch('stage', { bambooLikePower: Number(event.target.value) })}/></Field>
-      <Field label={`Sức mạnh quà · ${stage.bambooGiftPower.toFixed(1)}`} hint="Kim cương × combo × hệ số."><input type="range" min="0.1" max="3" step="0.1" value={stage.bambooGiftPower} onChange={(event) => void patch('stage', { bambooGiftPower: Number(event.target.value) })}/></Field>
-      <Toggle checked={stage.bambooAutoRestart} onChange={(bambooAutoRestart) => void patch('stage', { bambooAutoRestart })} label="Tự mở ván mới" description="Chờ 8 giây sau khi công bố kết quả."/>
-    </Card>
-    </>}
   </div>;
 }
 
