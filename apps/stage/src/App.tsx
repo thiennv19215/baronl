@@ -257,6 +257,10 @@ function App() {
   const beat = audioBeat + state.testBeat;
   const commandViewerId = activeCommand ? state.stageCommand?.viewerId : undefined;
   const commandFocusX = commandViewerId ? ((stableHash(commandViewerId) % 1000) / 999 - .5) * 8 : 0;
+  const recentGift = currentGift && Date.now() - currentGift.createdAt < (currentGift.superGift ? 8_000 : 5_000) ? currentGift : undefined;
+  const recentFollow = latestChat?.kind === 'follow' && Date.now() - latestChat.createdAt < 4_500 ? latestChat : undefined;
+  const interactionViewerId = recentGift?.viewer.id ?? recentFollow?.viewer.id;
+  const interactionFocusX = interactionViewerId ? ((stableHash(interactionViewerId) % 1000) / 999 - .5) * 7.2 : 0;
   const dismissWish = useCallback((id: string) => {
     dispatch({ type: 'event', event: { type: 'wish:remove', payload: { id } } });
     const facade = window.orbitStage;
@@ -272,17 +276,19 @@ function App() {
       :
     <section className={`stage theme-${state.appearance.theme} ${state.appearance.threeDEnabled ? 'dance-floor-mode' : ''} floor-${state.appearance.danceFloorStyle}`} style={backgroundStyle} aria-label="Sân khấu OrbitStage LIVE">
       {state.appearance.backgroundType === 'video' && backgroundSource && <video className="stage-video" src={backgroundSource} autoPlay muted loop playsInline/>}
-      {state.appearance.threeDEnabled && state.appearance.danceFloorStyle === 'club' && <div className="club-environment" style={{ backgroundImage: `url("${projectAssetRoot}/backgrounds/club-cathedral.png")` }} aria-hidden="true"><i/><i/><i/></div>}
-      {state.appearance.threeDEnabled && state.appearance.danceFloorStyle === 'prism' && <div className="prism-environment" aria-hidden="true"><div className="prism-screen"><i/><i/><i/></div><div className="prism-truss"><i/><i/><i/><i/><i/></div><div className="prism-grid"/></div>}
+      {state.appearance.threeDEnabled && state.appearance.danceFloorStyle === 'club' && quality === 'low' && <div className="club-environment" style={{ backgroundImage: `url("${projectAssetRoot}/backgrounds/nightclub-interior-v2.png")` }} aria-hidden="true"><i/><i/><i/></div>}
+      {state.appearance.threeDEnabled && state.appearance.danceFloorStyle === 'prism' && quality === 'low' && <div className="prism-environment" aria-hidden="true"><div className="prism-screen"><i/><i/><i/></div><div className="prism-truss"><i/><i/><i/><i/><i/></div><div className="prism-grid"/></div>}
       {state.appearance.threeDEnabled && <ThreeStage
         quality={quality} live={state.live} musicPlaying={state.music.playing} audioEnergy={audioEnergy} beat={beat}
         speaking={Boolean(state.speech)} theme={state.appearance.theme} command={activeCommand} focusX={commandFocusX}
+        interactionFocus={Boolean(interactionViewerId)} interactionFocusId={interactionViewerId} interactionFocusX={interactionFocusX}
+        assetRoot={projectAssetRoot} viewers={Object.values(state.viewers)}
         leaderCount={Math.min(3, leaders.length)} giftActive={Boolean(currentGift && Date.now() - currentGift.createdAt < 7000)} giftId={currentGift?.id}
         lunaCanvas={lunaCanvas} greeting={state.characterAction?.name === 'greet'}
-        settings={{ cameraMode: state.appearance.cameraMode, floorBright: state.appearance.floorBright, lasers: state.appearance.lasers, ledScreens: state.appearance.ledScreens, topPodiums: state.appearance.topPodiums, danceFloorStyle: state.appearance.danceFloorStyle }}
+        settings={{ cameraMode: state.appearance.cameraMode, floorBright: state.appearance.floorBright, lasers: state.appearance.lasers, ledScreens: state.appearance.ledScreens, topPodiums: state.appearance.topPodiums, danceFloorStyle: state.appearance.danceFloorStyle, maxFloorActors: state.appearance.maxFloorActors }}
       />}
       {state.appearance.threeDEnabled && state.characters.enabled && <div className="live2d-stage-source" aria-hidden="true"><Live2DHost assetRoot={projectAssetRoot} speaking={state.characters.lipSync && state.speech?.host === 'a'} blink={state.characters.blink} fallbackSource={`${projectAssetRoot}/dual-host/luna/closed.png`} onCanvasReady={setLunaCanvas}/></div>}
-      {state.appearance.threeDEnabled && <DanceFloorActors viewers={Object.values(state.viewers)} command={activeCommand} spotlightViewerId={state.eventFx?.viewerId} gift={currentGift} settings={state.appearance}/>}
+      {state.appearance.threeDEnabled && (state.appearance.danceFloorStyle === 'orbit' || quality === 'low') && <DanceFloorActors viewers={Object.values(state.viewers)} command={activeCommand} spotlightViewerId={state.eventFx?.viewerId} gift={currentGift} settings={state.appearance}/>}
       {state.appearance.commandBoardEnabled && state.live && <ViewerCommandBoard toggles={state.appearance.commandToggles} active={activeCommand}/>}
       {state.eventFx && <StageEventFx effect={state.eventFx}/>}
       <div className="stage-vignette"/>
@@ -479,8 +485,8 @@ function stableHash(value: string): number {
 }
 
 function DanceFloorActors({ viewers, command, spotlightViewerId, gift, settings }: { viewers: StageViewer[]; command?: string; spotlightViewerId?: string; gift?: GiftEffect; settings: StageState['appearance'] }) {
+  const clubMode = settings.danceFloorStyle === 'club';
   const actors = useMemo(() => {
-    const clubMode = settings.danceFloorStyle === 'club';
     const prismMode = settings.danceFloorStyle === 'prism';
     const maxActors = Math.max(8, Math.min(80, settings.maxFloorActors));
     const ranked = [...viewers].sort((a, b) => b.gifts - a.gifts || b.points - a.points || b.likes - a.likes);
@@ -495,7 +501,7 @@ function DanceFloorActors({ viewers, command, spotlightViewerId, gift, settings 
     // The crowd lives on a trapezoid-shaped dance floor. Far rows are narrower
     // and higher; near rows open up towards the front edge of the arena.
     const floorProfile = clubMode
-      ? { farInset: 24, nearInset: 7, farTop: 25, nearTop: 94 }
+      ? { farInset: 30, nearInset: 11, farTop: 33, nearTop: 88 }
       : prismMode
         ? { farInset: 23, nearInset: 6, farTop: 23, nearTop: 93 }
         : { farInset: 26, nearInset: 5, farTop: 26, nearTop: 94 };
@@ -524,13 +530,16 @@ function DanceFloorActors({ viewers, command, spotlightViewerId, gift, settings 
     <div className="dance-floor-arena" aria-hidden="true"><i className="arena-ring arena-ring-outer"/><i className="arena-ring arena-ring-inner"/><i className="arena-center"/><i className="arena-lane arena-lane-left"/><i className="arena-lane arena-lane-right"/><span className="arena-front-edge"/></div>
     {actors.map(({ viewer, frames, sprite, vipRank, left, top, delay, density, wanderX, wanderY, wanderDuration }) => {
       const giftFocus = giftViewerId === viewer.id;
-      const style = { left: `${left}%`, top: `${top}%`, zIndex: giftFocus ? 90 : Math.round(top), '--actor-scale': (.66 + (top / 100) * .58) * density * (giftFocus ? 1.4 : 1), '--actor-delay': `${delay}s`, '--wander-x': `${wanderX}cqw`, '--wander-y': `${wanderY}cqw`, '--wander-duration': `${wanderDuration}s` } as React.CSSProperties;
+      const interactionFocus = giftFocus || spotlightViewerId === viewer.id;
+      const perspectiveScale = clubMode ? .38 + (top / 100) * .72 : .66 + (top / 100) * .58;
+      const focusScale = giftFocus ? 1.32 : interactionFocus ? 1.18 : 1;
+      const style = { left: `${left}%`, top: `${top}%`, zIndex: interactionFocus ? 90 : Math.round(top), '--actor-scale': perspectiveScale * density * focusScale, '--actor-delay': `${delay}s`, '--wander-x': `${wanderX}cqw`, '--wander-y': `${wanderY}cqw`, '--wander-duration': `${wanderDuration}s` } as React.CSSProperties;
       const spriteFile = `char-${String(sprite).padStart(2, '0')}-sheet.png`;
       const spriteStyle = { backgroundImage: `url("${projectAssetRoot}/avatars/dance/${spriteFile}")`, backgroundSize: 'auto 100%', animationTimingFunction: `steps(${frames})`, '--sprite-travel': `${frames * 14}cqw` } as React.CSSProperties;
       const wingFile = vipRank ? `top${vipRank}.png` : viewer.level >= 25 ? 'canh3.png' : undefined;
       const wingStyle = wingFile ? { backgroundImage: `url("${projectAssetRoot}/fx/dance/${wingFile}")` } : undefined;
       const motion = viewer.motionUntil && viewer.motionUntil > Date.now() ? viewer.motion : undefined;
-      return <div className={`floor-actor ${vipRank ? `vip vip-${vipRank}` : ''} ${spotlightViewerId === viewer.id ? 'spotlighted' : ''} ${motion ? `motion-${motion}` : ''}`} style={style} key={viewer.id}>{wingStyle && <i className="floor-actor-wings" style={wingStyle}/>}<i className="floor-actor-spotlight"/><span className="floor-actor-name">{vipRank && <em>TOP {vipRank}</em>}<img src={cultivationBadgeSource(viewer.level)} alt=""/><b>{viewer.name}</b><small>LV.{viewer.level}</small></span><i className="floor-actor-emote">{motion === 'gift' ? '◆' : motion === 'heart' ? '♥' : motion === 'cheer' ? '★' : motion === 'wave' ? '👋' : motion === 'enter' ? '✦' : ''}</i><i className="floor-actor-shadow"/><span className="floor-actor-sprite" style={spriteStyle}/></div>;
+      return <div data-floor-viewer={viewer.id} className={`floor-actor ${vipRank ? `vip vip-${vipRank}` : ''} ${spotlightViewerId === viewer.id ? 'spotlighted' : ''} ${motion ? `motion-${motion}` : ''}`} style={style} key={viewer.id}>{wingStyle && <i className="floor-actor-wings" style={wingStyle}/>}<i className="floor-actor-spotlight"/><span className="floor-actor-name">{vipRank && <em>TOP {vipRank}</em>}<img src={cultivationBadgeSource(viewer.level)} alt=""/><b>{viewer.name}</b><small>LV.{viewer.level}</small></span><i className="floor-actor-emote">{motion === 'gift' ? '◆' : motion === 'heart' ? '♥' : motion === 'cheer' ? '★' : motion === 'wave' ? '👋' : motion === 'enter' ? '✦' : ''}</i><i className="floor-actor-shadow"/><span className="floor-actor-sprite" style={spriteStyle}/></div>;
     })}
   </div>;
 }
@@ -575,9 +584,22 @@ function LevelUpCelebration({ levelUp }: { levelUp: NonNullable<StageState['leve
 }
 
 function Character({ name, role, variant, speaking, blink, action, beat, giftId }: { name: string; role: string; variant: 'nova' | 'echo'; speaking: boolean; blink: boolean; action?: 'greet'; beat: number; giftId?: string }) {
+  const characterRef = useRef<HTMLDivElement>(null);
   const host = variant === 'nova' ? 'luna' : 'ryan';
   const state = speaking ? 'open' : 'closed';
-  return <div key={`${beat}-${giftId ?? ''}`} className={`stage-character art-host ${variant} ${speaking ? 'speaking' : ''} ${blink ? 'blink-enabled' : ''} ${beat ? `music-reactive beat-variant-${beat % 5}` : ''} ${giftId ? 'gift-jump' : ''} ${action ? `action-${action}` : ''}`}>
+  // Give each host a longer choreography and offset the DJ so the pair does
+  // not mirror the same move on every beat.
+  const danceVariant = (beat + (variant === 'echo' ? 6 : 0)) % 12;
+  useEffect(() => {
+    const character = characterRef.current;
+    if (!character || !giftId) return;
+    // Restart the gift animation without changing React keys. A changing key
+    // would tear down and rebuild the expensive Live2D/WebGL runtime.
+    character.classList.remove('gift-jump');
+    void character.offsetWidth;
+    character.classList.add('gift-jump');
+  }, [giftId]);
+  return <div ref={characterRef} className={`stage-character art-host ${variant} ${speaking ? 'speaking' : ''} ${blink ? 'blink-enabled' : ''} ${beat ? `music-reactive beat-variant-${danceVariant}` : ''} ${giftId ? 'gift-jump' : ''} ${action ? `action-${action}` : ''}`}>
     <div className="character-aura"><i/><i/></div>{variant === 'nova' ? <Live2DHost assetRoot={projectAssetRoot} speaking={speaking} blink={blink} fallbackSource={`${projectAssetRoot}/dual-host/luna/${state}.png`}/> : <><img className="host-art base-art" src={`${projectAssetRoot}/dual-host/${host}/${state}.png`} alt=""/>{blink && <img className="host-art blink-art" src={`${projectAssetRoot}/dual-host/${host}/blink.png`} alt=""/>}</>}<div className="host-name"><small>{role}</small><strong>{name}</strong><i/></div>
   </div>;
 }

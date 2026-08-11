@@ -453,7 +453,7 @@ function GamesScreen({ config, patch, notify }: ScreenProps & { notify: (message
     <Card className="stage-preset-card">
       <CardTitle title="Giao diện Game 1" hint="Chọn kiểu sàn nhảy đang hiển thị trên Stage."/>
       <div className="stage-preset-options">
-        {([['orbit', 'Orbit', 'Neon nguyên bản'], ['club', 'Club', 'Tím đỏ · đông dancer'], ['prism', 'Prism Grid', 'Xanh ngọc · LED khối']] as const).map(([value, title, hint]) => <button key={value} type="button" className={stage.danceFloorStyle === value ? 'selected' : ''} onClick={() => void patch('stage', { danceFloorStyle: value })}><i/><span><strong>{title}</strong><small>{hint}</small></span>{stage.danceFloorStyle === value && <Icon name="check" size={14}/>}</button>)}
+        {([['orbit', 'Orbit', 'Neon nguyên bản'], ['club', 'Club', 'Quán bar 3D · sàn gỗ'], ['prism', 'Arena', 'Sàn lưới · TOP 3 · đông dancer']] as const).map(([value, title, hint]) => <button key={value} type="button" className={stage.danceFloorStyle === value ? 'selected' : ''} onClick={() => void patch('stage', { danceFloorStyle: value })}><i/><span><strong>{title}</strong><small>{hint}</small></span>{stage.danceFloorStyle === value && <Icon name="check" size={14}/>}</button>)}
       </div>
     </Card>
 
@@ -546,7 +546,7 @@ function CustomizeScreen({ config, patch, notify }: ScreenProps & { notify: (mes
     <Card className="stage-preview-card">
       <CardTitle title="Bản xem trước 9:16" hint="Bố cục co giãn giống OBS Browser Source." action={<span className="badge success"><span className="status-dot ok"/>SYNC</span>}/>
       <div className={`mini-stage theme-${stage.theme} floor-${stage.danceFloorStyle}`}>
-        <div className="mini-stage-rig"><i/><i/><i/><i/><i/></div><div className="mini-stage-screen">{stage.danceFloorStyle === 'prism' ? 'PRISM LIVE' : stage.danceFloorStyle === 'club' ? 'CLUB LIVE' : 'ORBIT LIVE'}</div><div className="mini-stage-platform"/><div className="mini-stage-floor"/>
+        <div className="mini-stage-rig"><i/><i/><i/><i/><i/></div><div className="mini-stage-screen">{stage.danceFloorStyle === 'prism' ? 'ARENA LIVE' : stage.danceFloorStyle === 'club' ? 'CLUB LIVE' : 'ORBIT LIVE'}</div><div className="mini-stage-platform"/><div className="mini-stage-floor"/>
         <div className="mini-stars"/><div className="mini-led">ORBITSTAGE · LIVE NOW</div><div className="mini-leaderboard"><span>🏆 TOP GIFTERS</span><b>1 · Luna</b><b>2 · Minh Anh</b><b>3 · Sky</b></div><div className="mini-character a"><i/><b>NOVA</b></div><div className="mini-character b"><i/><b>ECHO</b></div><div className="mini-chat"><span>MA</span><p><b>Minh Anh</b> Sân khấu đẹp quá! ✨</p></div><div className="mini-deck">◀  Now playing  ·  Cosmic Bloom  ▶</div>
       </div>
     </Card>

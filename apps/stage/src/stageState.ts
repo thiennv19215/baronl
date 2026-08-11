@@ -31,7 +31,7 @@ export const initialStageState: StageState = {
     effectQuality: 'balanced',
     avatarStyle: 'neon',
     threeDEnabled: true,
-    danceFloorStyle: 'orbit',
+    danceFloorStyle: 'prism',
     cameraMode: 'ambient',
     floorBright: true,
     lasers: true,

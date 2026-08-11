@@ -4,6 +4,10 @@
 from a user-provided composition reference. It does not copy people, names,
 logos, interface chrome, or text from the reference.
 
+`nightclub-interior-v2.png` was generated specifically for this OrbitStage
+repository as an original photorealistic nightclub background. It contains no
+people, brands, or third-party logos.
+
 - Holder: OrbitStage project owner
 - License: project-owned
 - Distribution: project use

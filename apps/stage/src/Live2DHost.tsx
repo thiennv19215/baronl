@@ -64,7 +64,25 @@ export function Live2DHost({ assetRoot, speaking, blink, fallbackSource, onCanva
     let disposed = false;
     let frame = 0;
     let observer: ResizeObserver | undefined;
-    let destroyRuntime: (() => void) | undefined;
+    let runtimeGl: WebGLRenderingContext | undefined;
+    let runtimeRenderer: any;
+    let runtimeTextures: WebGLTexture[] = [];
+    let runtimeMoc: any;
+    let runtimeModel: any;
+    const releaseRuntime = () => {
+      const renderer = runtimeRenderer;
+      const textures = runtimeTextures;
+      const moc = runtimeMoc;
+      const model = runtimeModel;
+      runtimeRenderer = undefined;
+      runtimeTextures = [];
+      runtimeMoc = undefined;
+      runtimeModel = undefined;
+      try { renderer?.release(); } catch { /* Continue releasing the remaining WebGL resources. */ }
+      if (runtimeGl) textures.forEach((texture) => runtimeGl?.deleteTexture(texture));
+      try { if (moc && model) moc.deleteModel(model); } catch { /* Model may only be released once. */ }
+      try { moc?.release(); } catch { /* Moc may only be released once. */ }
+    };
     const canvas = document.createElement('canvas');
     canvas.className = 'live2d-canvas';
     container.append(canvas);
@@ -74,27 +92,43 @@ export function Live2DHost({ assetRoot, speaking, blink, fallbackSource, onCanva
       try {
         const vendorRoot = `${assetRoot}/vendor/live2d`;
         await loadCubismCore(`${vendorRoot}/Core/live2dcubismcore.min.js`);
+        if (disposed) return;
         const framework = await import(/* @vite-ignore */ `${vendorRoot}/Framework/browser/framework-browser-entry.js`) as CubismFrameworkModule;
+        if (disposed) return;
         framework.CubismFramework.startUp();
         framework.CubismFramework.initialize();
         const gl = (canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true }) ?? canvas.getContext('experimental-webgl', { alpha: true, premultipliedAlpha: true })) as WebGLRenderingContext | null;
         if (!gl) throw new Error('WebGL không khả dụng cho Live2D');
+        runtimeGl = gl;
         const modelUrl = `${assetRoot}/live2d/luna/Luna-Live2D-Cubism.model3.json`;
         const manifest = await fetch(modelUrl).then((response) => {
           if (!response.ok) throw new Error(`Không tải được model Live2D: ${response.status}`);
           return response.json() as Promise<{ FileReferences: { Moc: string; Textures: string[] } }>;
         });
+        if (disposed) return;
         const base = new URL(modelUrl, location.href);
         const mocUrl = new URL(manifest.FileReferences.Moc, base).href;
         const mocBuffer = await fetch(mocUrl).then((response) => response.arrayBuffer());
+        if (disposed) return;
         const moc = framework.CubismMoc.create(mocBuffer, true);
+        runtimeMoc = moc;
         const model = moc?.createModel();
         if (!model) throw new Error('Model moc3 không tương thích');
+        runtimeModel = model;
         const renderer = new framework.CubismRenderer_WebGL();
+        runtimeRenderer = renderer;
         renderer.initialize(model);
         renderer.startUp(gl);
         renderer.setIsPremultipliedAlpha(true);
-        const textures = await Promise.all(manifest.FileReferences.Textures.map((path) => createTexture(gl, new URL(path, base).href)));
+        for (const texturePath of manifest.FileReferences.Textures) {
+          const texture = await createTexture(gl, new URL(texturePath, base).href);
+          runtimeTextures.push(texture);
+          if (disposed) {
+            releaseRuntime();
+            return;
+          }
+        }
+        const textures = runtimeTextures;
         textures.forEach((texture, index) => renderer.bindTexture(index, texture));
         const matrix = new framework.CubismModelMatrix(model.getCanvasWidth(), model.getCanvasHeight());
         matrix.setHeight(1.55);
@@ -133,13 +167,8 @@ export function Live2DHost({ assetRoot, speaking, blink, fallbackSource, onCanva
           frame = requestAnimationFrame(draw);
         };
         frame = requestAnimationFrame(draw);
-        destroyRuntime = () => {
-          renderer.release();
-          textures.forEach((texture) => gl.deleteTexture(texture));
-          moc.deleteModel(model);
-          moc.release();
-        };
       } catch {
+        releaseRuntime();
         if (!disposed) setFailed(true);
       }
     })();
@@ -147,7 +176,7 @@ export function Live2DHost({ assetRoot, speaking, blink, fallbackSource, onCanva
       disposed = true;
       cancelAnimationFrame(frame);
       observer?.disconnect();
-      destroyRuntime?.();
+      releaseRuntime();
       onCanvasReady?.(undefined);
       canvas.remove();
     };

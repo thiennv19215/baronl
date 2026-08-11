@@ -35,7 +35,7 @@ export const defaultConfig: AppConfig = {
     effectQuality: 'balanced',
     avatarStyle: 'neon',
     threeDEnabled: true,
-    danceFloorStyle: 'orbit',
+    danceFloorStyle: 'prism',
     cameraMode: 'ambient',
     floorBright: true,
     lasers: true,
