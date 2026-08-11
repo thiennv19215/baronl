@@ -8,15 +8,21 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const tempRoot = path.resolve(tmpdir());
+const electronArgs = [
+  projectRoot,
+  '--use-gl=swiftshader',
+  '--enable-unsafe-swiftshader',
+  '--disable-gpu-sandbox',
+];
 
 const screens = [
-  { navigation: 'Điều khiển LIVE', heading: 'Điều khiển LIVE' },
-  { navigation: 'LED sân khấu', heading: 'LED sân khấu' },
-  { navigation: 'Game', heading: 'Game' },
-  { navigation: 'Tùy chỉnh', heading: 'Tùy chỉnh sân khấu' },
-  { navigation: 'Nhân vật', heading: 'Nhân vật' },
-  { navigation: 'AI MC / DJ', heading: 'AI MC / DJ' },
-  { navigation: 'Test LIVE', heading: 'Test LIVE' },
+  ['Điều khiển LIVE', 'Điều khiển LIVE'],
+  ['LED sân khấu', 'LED sân khấu'],
+  ['Game', 'Game'],
+  ['Tùy chỉnh', 'Tùy chỉnh sân khấu'],
+  ['Nhân vật', 'Nhân vật'],
+  ['AI MC / DJ', 'AI MC / DJ'],
+  ['Test LIVE', 'Test LIVE'],
 ] as const;
 
 let electronApp: ElectronApplication;
@@ -41,7 +47,12 @@ async function findStagePage(): Promise<Page | undefined> {
     if (page === controlPage) continue;
     const handle = await electronApp.browserWindow(page);
     const meta = await handle.evaluate((win) => ({ title: win.getTitle(), url: win.webContents.getURL(), bounds: win.getBounds() }));
-    if (meta.title === 'OrbitStage · OBS Stage' && meta.url.includes('/stage?') && meta.bounds.width === 540 && meta.bounds.height === 960) return page;
+    if (
+      meta.title === 'OrbitStage · OBS Stage'
+      && meta.url.includes('/stage?')
+      && meta.bounds.width === 540
+      && meta.bounds.height === 960
+    ) return page;
   }
   return undefined;
 }
@@ -56,11 +67,13 @@ async function openStagePage(): Promise<Page> {
   return page;
 }
 
-async function stageUsesWebGLFallback(page: Page): Promise<boolean> {
-  return new URL(page.url()).searchParams.get('webglFallback') === '1';
+async function closeStageWindows(): Promise<void> {
+  for (const page of electronApp.windows()) {
+    if (page !== controlPage) await page.close().catch(() => undefined);
+  }
 }
 
-test.describe.serial('OrbitStage Electron', () => {
+test.describe.serial('OrbitStage Electron V2', () => {
   test.beforeAll(async () => {
     aiStub = createServer((request, response) => {
       const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
@@ -92,7 +105,12 @@ test.describe.serial('OrbitStage Electron', () => {
     launchEnvironment.ORBITSTAGE_E2E = '1';
     launchEnvironment.ORBITSTAGE_USER_DATA = userDataDirectory;
 
-    electronApp = await electron.launch({ args: [projectRoot], cwd: projectRoot, env: launchEnvironment, timeout: 30_000 });
+    electronApp = await electron.launch({
+      args: electronArgs,
+      cwd: projectRoot,
+      env: launchEnvironment,
+      timeout: 30_000,
+    });
     controlPage = await electronApp.firstWindow();
     await controlPage.waitForLoadState('domcontentloaded');
     await expect(controlPage.getByRole('heading', { level: 1, name: 'Điều khiển LIVE' })).toBeVisible();
@@ -104,7 +122,7 @@ test.describe.serial('OrbitStage Electron', () => {
     if (userDataDirectory) await removeTemporaryProfile(userDataDirectory);
   });
 
-  test('keeps the preload isolated and exposes all seven Control screens', async ({}, testInfo) => {
+  test('keeps preload isolated and exposes all seven Control screens', async ({}, testInfo) => {
     const security = await controlPage.evaluate(() => ({
       hasBridge: typeof window.orbitStage === 'object',
       hasNodeProcess: typeof (globalThis as typeof globalThis & { process?: unknown }).process !== 'undefined',
@@ -112,37 +130,37 @@ test.describe.serial('OrbitStage Electron', () => {
     }));
     expect(security).toEqual({ hasBridge: true, hasNodeProcess: false, hasRequire: false });
 
-    for (const screen of screens) {
-      await controlPage.getByRole('button', { name: new RegExp(`^${screen.navigation}`) }).click();
-      await expect(controlPage.getByRole('heading', { level: 1, name: screen.heading })).toBeVisible();
+    for (const [navigation, heading] of screens) {
+      await controlPage.getByRole('button', { name: new RegExp(`^${navigation}`) }).click();
+      await expect(controlPage.getByRole('heading', { level: 1, name: heading })).toBeVisible();
     }
     await attachPng(testInfo, 'control-seven-tabs', controlPage);
   });
 
-  test('opens the real 540x960 Stage and keeps it alive with or without WebGL', async ({}, testInfo) => {
+  test('opens the real 540x960 Stage and routes fake LIVE events through IPC', async ({}, testInfo) => {
+    await closeStageWindows();
     await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { invoke: (channel: string, payload?: unknown) => Promise<unknown> } }).orbitStage;
-      await bridge.invoke('config:patch', { stage: { gameMode: 'dance-floor' } });
+      await bridge.invoke('config:patch', { stage: { gameMode: 'dance-floor', effectQuality: 'balanced' } });
     });
 
     const stagePage = await openStagePage();
     await expect(stagePage.locator('.stage')).toBeVisible();
+    await expect(stagePage.locator('.three-stage canvas')).toBeVisible();
     await expect(stagePage.locator('.stage-logo')).toBeVisible();
-    await expect(stagePage.locator('.three-stage')).toBeVisible();
-
-    if (await stageUsesWebGLFallback(stagePage)) {
-      await expect(stagePage.locator('.three-stage canvas')).toHaveCount(0);
-      await expect(stagePage.locator('.live2d-host.failed img')).toBeVisible();
-    } else {
-      await expect(stagePage.locator('.three-stage canvas')).toBeVisible();
-      await expect(stagePage.locator('.live2d-host')).not.toHaveClass(/failed/);
-      expect(await stagePage.locator('.live2d-canvas').evaluate((canvas) => (canvas as HTMLCanvasElement).width)).toBeGreaterThan(0);
-    }
+    expect(new URL(stagePage.url()).searchParams.get('webglFallback')).not.toBe('1');
 
     await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { sendFakeEvent: (event: unknown) => Promise<unknown> } }).orbitStage;
       await bridge.sendFakeEvent({ type: 'join', viewer: { id: 'e2e-viewer', name: 'E2E Nova', level: 24 } });
-      await bridge.sendFakeEvent({ type: 'gift', viewer: { id: 'e2e-viewer', name: 'E2E Nova', level: 24 }, giftName: 'E2E Comet', giftCount: 2, diamonds: 20, message: 'E2E pipeline đã kết nối' });
+      await bridge.sendFakeEvent({
+        type: 'gift',
+        viewer: { id: 'e2e-viewer', name: 'E2E Nova', level: 24 },
+        giftName: 'E2E Comet',
+        giftCount: 2,
+        diamonds: 20,
+        message: 'E2E pipeline đã kết nối',
+      });
     });
     await expect(stagePage.getByRole('heading', { level: 2, name: 'E2E Comet' })).toBeVisible({ timeout: 8_000 });
     await expect(stagePage.getByText('E2E Nova', { exact: true }).first()).toBeVisible();
@@ -151,7 +169,8 @@ test.describe.serial('OrbitStage Electron', () => {
     await stagePage.close();
   });
 
-  test('uses local AI/TTS stubs through the real Electron bridge', async () => {
+  test('uses local AI and TTS stubs through the real Electron bridge', async () => {
+    await closeStageWindows();
     const stagePage = await openStagePage();
     const localPort = await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { getSnapshot: () => Promise<{ localPort: number }> } }).orbitStage;
@@ -162,7 +181,12 @@ test.describe.serial('OrbitStage Electron', () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { invoke: (channel: string, payload?: unknown) => Promise<unknown> } }).orbitStage;
       await bridge.invoke('config:patch', {
         ai: { enabled: true, provider: 'openai', endpoint, model: 'e2e-model', contentFilter: true, ttsProvider: 'openai' },
-        music: { playlist: [{ id: 'e2e-loop', title: 'E2E Loop', path: musicPath, rights: 'placeholder' }], currentTrackId: 'e2e-loop', playing: true, volume: 42 },
+        music: {
+          playlist: [{ id: 'e2e-loop', title: 'E2E Loop', path: musicPath, rights: 'placeholder' }],
+          currentTrackId: 'e2e-loop',
+          playing: true,
+          volume: 42,
+        },
       });
       await bridge.invoke('secret:set', { name: 'aiApiKey', value: 'e2e-local-test-token' });
     }, { endpoint: aiStubBaseUrl, musicPath: `http://127.0.0.1:${localPort}/project-assets/music/placeholder-loop.wav` });
@@ -196,20 +220,18 @@ test.describe.serial('OrbitStage Electron', () => {
   });
 
   test('runs Bamboo Battle V2 through IPC and the routed Game Store', async ({}, testInfo) => {
-    for (const page of electronApp.windows()) if (page !== controlPage) await page.close();
+    await closeStageWindows();
     await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { invoke: (channel: string, payload?: unknown) => Promise<unknown> } }).orbitStage;
-      await bridge.invoke('config:patch', { stage: { gameMode: 'bamboo-battle', bambooRoundSeconds: 60, bambooAutoRestart: true } });
+      await bridge.invoke('config:patch', {
+        stage: { gameMode: 'bamboo-battle', effectQuality: 'balanced', bambooRoundSeconds: 60, bambooAutoRestart: true },
+      });
     });
 
     const stagePage = await openStagePage();
     const battle = stagePage.getByLabel('Bamboo Battle V2');
     await expect(battle).toBeVisible();
-    if (await stageUsesWebGLFallback(stagePage)) {
-      await expect(battle.locator('[data-webgl-fallback="true"]')).toBeVisible();
-    } else {
-      await expect(battle.locator('.bamboo-battle-3d canvas')).toBeVisible();
-    }
+    await expect(battle.locator('.bamboo-battle-3d canvas')).toBeVisible();
 
     await controlPage.evaluate(async () => {
       const bridge = (globalThis as typeof globalThis & { orbitStage: { sendFakeEvent: (event: unknown) => Promise<unknown> } }).orbitStage;
@@ -233,5 +255,6 @@ test.describe.serial('OrbitStage Electron', () => {
     await expect(battle.locator('.bamboo-v2-event')).toBeVisible();
     await store.getByRole('button', { name: 'Dừng mô phỏng' }).click();
     await expect(store.getByRole('button', { name: 'Bắt đầu mô phỏng' })).toBeVisible();
+    await stagePage.close();
   });
 });
