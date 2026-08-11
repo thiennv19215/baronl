@@ -6,15 +6,19 @@ interface StageRuntimeBoundaryState {
   error?: Error;
 }
 
-function isWebGLError(error: Error): boolean {
-  return /webgl|webglrenderer|gl context/i.test(`${error.name} ${error.message}`);
-}
-
-function hasWebGLContext(): boolean {
+async function canCreateStageRenderer(): Promise<boolean> {
   try {
-    const canvas = document.createElement('canvas');
-    return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
-  } catch {
+    const THREE = await import('three');
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true,
+      powerPreference: 'high-performance',
+    });
+    renderer.dispose();
+    renderer.domElement.remove();
+    return true;
+  } catch (error) {
+    console.warn('[OrbitStage] WebGL probe failed; using low-quality Stage fallback.', error);
     return false;
   }
 }
@@ -40,7 +44,7 @@ class StageRuntimeBoundary extends Component<{ children: ReactNode }, StageRunti
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[OrbitStage] Stage renderer failed.', error, info.componentStack);
+    console.error('[OrbitStage] Stage renderer failed after bootstrap.', error, info.componentStack);
   }
 
   render() {
@@ -55,7 +59,7 @@ class StageRuntimeBoundary extends Component<{ children: ReactNode }, StageRunti
 }
 
 async function bootstrap(): Promise<void> {
-  if (!hasWebGLContext()) await enableWebGLFallback();
+  if (!(await canCreateStageRenderer())) await enableWebGLFallback();
   const { default: App } = await import('./App');
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
