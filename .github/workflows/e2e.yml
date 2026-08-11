@@ -31,8 +31,13 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Build
-        run: npm run build
+      - name: Build workspaces for E2E
+        run: |
+          npm run build -w @orbitstage/shared
+          npm run build -w @orbitstage/live-service
+          npm run build -w @orbitstage/control
+          npm run build -w @orbitstage/stage
+          npm run build -w @orbitstage/desktop
 
       - name: Unit and integration tests
         run: |
