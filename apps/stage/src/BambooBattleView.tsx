@@ -4,6 +4,7 @@ import { skillLabel } from './bambooBattleEffects';
 import type { StageConnection } from './types';
 import { BambooBattle3D } from './BambooBattle3D';
 import './BambooBattleV2.css';
+import './BambooBattleFallback.css';
 
 interface BambooBattleProps {
   state: BambooBattleState;
@@ -14,6 +15,16 @@ interface BambooBattleProps {
 }
 
 const compact = new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 });
+const lowQualityFallback = new URLSearchParams(window.location.search).get('quality') === 'low';
+
+function BambooBattleFallback({ greenCharacter, orangeCharacter }: Pick<BambooBattleProps, 'greenCharacter' | 'orangeCharacter'>) {
+  return <div className="bamboo-battle-3d bamboo-battle-3d-fallback" data-webgl-fallback="true" aria-hidden="true">
+    <span className="bamboo-fallback-fighter green">{greenCharacter === 'bear' ? '🐻' : '🐶'}</span>
+    <b className="bamboo-fallback-vs">VS</b>
+    <span className="bamboo-fallback-fighter orange">{orangeCharacter === 'bear' ? '🐻' : '🐶'}</span>
+    <small className="bamboo-fallback-note">CHẾ ĐỘ 2D · WEBGL KHÔNG KHẢ DỤNG</small>
+  </div>;
+}
 
 export function BambooBattle({ state, connection, viewerCount, greenCharacter, orangeCharacter }: BambooBattleProps) {
   const green = bambooTeamPlayers(state, 'green');
@@ -27,7 +38,10 @@ export function BambooBattle({ state, connection, viewerCount, greenCharacter, o
   const result = state.winner === 'draw' ? 'HAI PHE HÒA NHAU' : state.winner === 'green' ? 'PHE XANH CHIẾN THẮNG!' : state.winner === 'orange' ? 'PHE CAM CHIẾN THẮNG!' : '';
 
   return <section className="bamboo-v2" style={style} aria-label="Bamboo Battle V2">
-    <BambooBattle3D state={state} greenCharacter={greenCharacter} orangeCharacter={orangeCharacter}/>
+    {lowQualityFallback
+      ? <BambooBattleFallback greenCharacter={greenCharacter} orangeCharacter={orangeCharacter}/>
+      : <BambooBattle3D state={state} greenCharacter={greenCharacter} orangeCharacter={orangeCharacter}/>
+    }
 
     <div className="bamboo-v2-hud">
       <div className="bamboo-v2-top">
