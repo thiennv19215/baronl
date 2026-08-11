@@ -43,7 +43,6 @@ jobs:
         run: npm test
 
       - name: Asset registry audit
-        continue-on-error: true
         run: npm run assets:check
 
       - name: Build shared
