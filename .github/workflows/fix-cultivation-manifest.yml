@@ -1,0 +1,46 @@
+name: Repair cultivation asset manifest
+
+on:
+  push:
+    branches:
+      - agent/stage-v2-productization
+    paths:
+      - .github/workflows/fix-cultivation-manifest.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: agent/stage-v2-productization
+
+      - name: Repair cultivation-map registry entry
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'assets/manifest.json';
+          let text = fs.readFileSync(path, 'utf8');
+          const before = '{ "id":"cultivation-map", "category":"badge", "mimeType":"application/json", "path":"assets/cultivation-titles/cultivation-title-assets.json", "bytes":8092, "sha256":"28ffda5b82a8956c803b8ef225e5c0315d1efac2c725d0bed3a407e3279f9fa0"';
+          const after = '{ "id":"cultivation-map", "category":"badge", "mimeType":"application/json", "path":"assets/cultivation-titles/cultivation-title-assets.json", "bytes":7881, "sha256":"3f2ec29aeadcb7ee05464f8b239a999efe1fd04b760f85c1410cf3845952ab23"';
+          if (!text.includes(before)) throw new Error('Expected cultivation-map manifest entry was not found');
+          text = text.replace(before, after);
+          fs.writeFileSync(path, text);
+          NODE
+          git diff --check
+          git diff -- assets/manifest.json
+
+      - name: Validate asset registry
+        run: node scripts/check-assets.mjs
+
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/manifest.json
+          git commit -m "Fix cultivation asset manifest metadata"
+          git push origin HEAD:agent/stage-v2-productization
