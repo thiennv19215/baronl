@@ -75,10 +75,6 @@ Single source of truth for installed game metadata shown in the Store: id, displ
 
 Contains presentation shared by more than one game. These components must not contain game rules.
 
-### `styles/`
-
-Contains CSS owned only by the Game feature. Game-specific styles should stay beside the feature instead of being added to the Control root.
-
 ### `dance-floor/`
 
 Everything specific to Game 01 Control UI lives here. `DanceFloorManager.tsx` owns only Dance Floor settings; Stage rendering remains in the Stage app.
@@ -128,6 +124,19 @@ Use feature-first names instead of generic names:
 - avoid: `Game2.tsx`, `helpers.ts`, `utils2.ts`, `data.ts` when the responsibility is not obvious.
 
 A new contributor should be able to infer a file's purpose from its path and filename without opening it.
+
+## CI validation
+
+`.github/workflows/ci.yml` validates pull requests with Node 22.12.0:
+
+1. install dependencies with `npm ci`;
+2. run workspace TypeScript checks;
+3. build `@orbitstage/shared` so workspace tests can resolve its `dist` entry;
+4. run the full Vitest suite;
+5. run the asset registry audit as a separate diagnostic;
+6. build `shared`, `live-service`, `control`, `stage`, and `desktop` individually.
+
+The code-build steps are intentionally separate from the asset registry audit. A stale asset manifest should remain visible as a repository-maintenance issue without hiding whether Control/Stage code itself compiles.
 
 ## Current migration note
 
