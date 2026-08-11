@@ -17,7 +17,7 @@ test('Game Store and Bamboo Battle manager render without page errors', async ({
   await page.screenshot({ path: 'ui-snapshots/game-store.png', fullPage: true });
 
   await page.getByRole('button', { name: /Bamboo Battle/i }).click();
-  await expect(page.getByRole('heading', { name: 'Bamboo Battle' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bamboo Battle', exact: true })).toBeVisible();
   await expect(page.getByText('GAME 02', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /Kích hoạt game này|Đang sử dụng/ })).toBeVisible();
   await page.screenshot({ path: 'ui-snapshots/bamboo-battle-manager.png', fullPage: true });
