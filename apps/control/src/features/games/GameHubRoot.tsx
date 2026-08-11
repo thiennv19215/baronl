@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { bridge } from '../../bridge';
 import { defaultConfig, mergeConfig } from '../../lib/model';
 import type { AppConfig, ConfigPatch } from '../../types';
@@ -10,6 +11,8 @@ export function GameHubRoot() {
   const [config, setConfig] = useState<AppConfig>(defaultConfig);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; tone: 'ok' | 'warn' | 'error' }>();
+  const [host, setHost] = useState<HTMLElement>();
+  const [active, setActive] = useState(false);
 
   const notify: Notify = useCallback((message, tone = 'ok') => {
     setToast({ message, tone });
@@ -36,6 +39,28 @@ export function GameHubRoot() {
     return dispose;
   }, [load]);
 
+  useEffect(() => {
+    const content = document.querySelector<HTMLElement>('.main-shell .content');
+    const nav = document.querySelector<HTMLElement>('.sidebar nav');
+    if (!content || !nav) return;
+
+    setHost(content);
+    const sync = () => {
+      const gameActive = Boolean(nav.querySelector('.nav-item:nth-of-type(3).active'));
+      setActive(gameActive);
+      content.classList.toggle('game-hub-host-active', gameActive);
+    };
+
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+      observer.disconnect();
+      content.classList.remove('game-hub-host-active');
+    };
+  }, []);
+
   const patch = useCallback(async <K extends keyof AppConfig,>(
     section: K,
     value: Partial<AppConfig[K]>,
@@ -52,11 +77,16 @@ export function GameHubRoot() {
     }
   }, [load, notify]) as PatchConfig;
 
-  return <section className="game-hub-overlay" aria-label="Kho game LIVE">
-    {loading
-      ? <div className="game-hub-loading"><span/><strong>Đang mở kho game…</strong></div>
-      : <GameHubScreen config={config} patch={patch} notify={notify}/>
-    }
-    {toast && <div className={`game-hub-toast ${toast.tone}`}>{toast.message}</div>}
-  </section>;
+  if (!host || !active) return null;
+
+  return createPortal(
+    <section className="game-hub-inline" aria-label="Kho game LIVE">
+      {loading
+        ? <div className="game-hub-loading"><span/><strong>Đang mở kho game…</strong></div>
+        : <GameHubScreen config={config} patch={patch} notify={notify}/>
+      }
+      {toast && <div className={`game-hub-toast ${toast.tone}`}>{toast.message}</div>}
+    </section>,
+    host,
+  );
 }
