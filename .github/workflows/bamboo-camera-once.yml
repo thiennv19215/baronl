@@ -1,0 +1,55 @@
+name: Bamboo camera one-time patch
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'Apply Bamboo camera director'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Patch Bamboo camera
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('apps/stage/src/BambooBattle3D.tsx')
+          s=p.read_text()
+          s=s.replace("import { applyFighterMotion, type FighterMotionRig } from './bambooMotion';", "import { applyFighterMotion, type FighterMotionRig } from './bambooMotion';\nimport { createBambooCameraDirector } from './bambooCamera';")
+          s=s.replace("    camera.position.set(0, 7.2, 20.5);\n    camera.lookAt(0, 1.5, 0);", "    camera.position.set(0, 7.2, 20.5);\n    const cameraDirector = createBambooCameraDirector(camera);\n    camera.lookAt(0, 1.6, 0);")
+          s=s.replace("      camera.aspect = width / height;\n      camera.updateProjectionMatrix();", "      cameraDirector.resize(width, height);")
+          old="""      greenLight.intensity = 14 + Math.max(0, liveState.position) * .28 + (impactTeam === 'green' ? impactPulse * 12 : 0);
+      orangeLight.intensity = 14 + Math.max(0, -liveState.position) * .28 + (impactTeam === 'orange' ? impactPulse * 12 : 0);
+      camera.position.x += ((currentX * .34 + tremor * .06) - camera.position.x) * .05;
+      camera.lookAt(currentX * .28, 1.65, 0);
+      renderer.render(scene, camera);"""
+          new="""      greenLight.intensity = 14 + Math.max(0, liveState.position) * .28 + (impactTeam === 'green' ? impactPulse * 12 : 0);
+      orangeLight.intensity = 14 + Math.max(0, -liveState.position) * .28 + (impactTeam === 'orange' ? impactPulse * 12 : 0);
+      cameraDirector.update({
+        elapsed,
+        currentX,
+        velocity,
+        tremor,
+        impactAge,
+        impactStrength,
+        impactTeam,
+        status: liveState.status,
+        winner: liveState.winner,
+        fallProgress,
+        fallingTeam,
+      });
+      renderer.render(scene, camera);"""
+          if old not in s: raise SystemExit('camera render block not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/stage/src/BambooBattle3D.tsx
+          git commit -m 'Use Bamboo camera director'
+          git push origin main
