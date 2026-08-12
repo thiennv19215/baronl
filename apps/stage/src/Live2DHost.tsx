@@ -54,7 +54,7 @@ export function Live2DHost({ assetRoot, speaking, blink, fallbackSource, onCanva
   const containerRef = useRef<HTMLDivElement>(null);
   const speakingRef = useRef(speaking);
   const blinkRef = useRef(blink);
-  const [failed, setFailed] = useState(false);
+  const [fallback, setFallback] = useState(false);
   speakingRef.current = speaking;
   blinkRef.current = blink;
 
@@ -87,6 +87,7 @@ export function Live2DHost({ assetRoot, speaking, blink, fallbackSource, onCanva
     canvas.className = 'live2d-canvas';
     container.append(canvas);
     onCanvasReady?.(canvas);
+    setFallback(false);
 
     void (async () => {
       try {
@@ -167,9 +168,12 @@ export function Live2DHost({ assetRoot, speaking, blink, fallbackSource, onCanva
           frame = requestAnimationFrame(draw);
         };
         frame = requestAnimationFrame(draw);
-      } catch {
+      } catch (error) {
         releaseRuntime();
-        if (!disposed) setFailed(true);
+        if (!disposed) {
+          console.warn('Live2D WebGL unavailable; using static host fallback.', error);
+          setFallback(true);
+        }
       }
     })();
     return () => {
@@ -182,5 +186,5 @@ export function Live2DHost({ assetRoot, speaking, blink, fallbackSource, onCanva
     };
   }, [assetRoot, onCanvasReady]);
 
-  return <div ref={containerRef} className={`live2d-host ${failed ? 'failed' : ''}`}>{failed && <img className="host-art base-art" src={fallbackSource} alt=""/>}</div>;
+  return <div ref={containerRef} className={`live2d-host ${fallback ? 'fallback' : ''}`}>{fallback && <img className="host-art base-art" src={fallbackSource} alt=""/>}</div>;
 }
