@@ -1,0 +1,185 @@
+/* Character System V2 presentation overrides.
+   Keep character art opaque and grounded; legacy screen blending made actors look ghost-like. */
+.three-stage,
+.floor-club .three-stage,
+.floor-prism .three-stage {
+  mix-blend-mode: normal;
+  opacity: 1;
+}
+
+.stage-viewport.transparent .three-stage {
+  opacity: .96;
+}
+
+.three-stage canvas {
+  image-rendering: auto;
+}
+
+/* Bamboo crowd: keep the viewer identity, but make each entry read as a small mascot
+   instead of a large flat avatar card. */
+.bamboo-players {
+  gap: .2cqw .45cqw;
+  padding: 4.4cqw 1.2cqw .7cqw;
+}
+
+.bamboo-player {
+  width: 10.5cqw;
+  height: 13.2cqw;
+  transform-origin: 50% 100%;
+  animation: bamboo-character-idle-v2 2.2s cubic-bezier(.4,0,.25,1) infinite alternate;
+  animation-delay: calc(var(--panda-index) * -.19s);
+  will-change: transform;
+}
+
+.bamboo-player:nth-child(-n+3) {
+  scale: 1.06;
+  z-index: 3;
+}
+
+.bamboo-player:nth-child(n+7) {
+  scale: .9;
+  opacity: .86;
+}
+
+.bamboo-player-name {
+  top: -.5cqw;
+  gap: .35cqw;
+  max-width: 11.5cqw;
+  padding: .3cqw .55cqw;
+  border-color: rgba(171,255,220,.25);
+  background: rgba(4,31,26,.68);
+  box-shadow: 0 .35cqw .8cqw rgba(0,0,0,.22);
+  backdrop-filter: blur(.45cqw);
+}
+
+.bamboo-team-orange .bamboo-player-name {
+  border-color: rgba(255,190,135,.26);
+  background: rgba(72,35,16,.7);
+}
+
+.bamboo-player-name b {
+  max-width: 6.8cqw;
+  font-size: .67cqw;
+}
+
+.bamboo-player-name small {
+  font-size: .54cqw;
+}
+
+.bamboo-panda {
+  bottom: .3cqw;
+  width: 7.25cqw;
+  height: 8.55cqw;
+  border: .16cqw solid rgba(255,255,255,.72);
+  border-radius: 49% 49% 43% 43%;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(255,255,255,.98) 0 28%, transparent 29%),
+    linear-gradient(180deg,#f9f5e7 0 55%,#e6dfca 56% 68%,#171c19 69% 100%);
+  box-shadow:
+    inset 0 -.7cqw 1.25cqw rgba(0,0,0,.24),
+    0 .75cqw 1cqw rgba(0,0,0,.34),
+    0 0 1.1cqw rgba(77,237,169,.14);
+  transform: translateX(-50%) perspective(18cqw) rotateX(-2deg);
+  transform-origin: 50% 100%;
+  filter: saturate(.96);
+}
+
+.bamboo-team-green .bamboo-panda {
+  box-shadow:
+    inset 0 -.7cqw 1.25cqw rgba(0,0,0,.24),
+    0 .75cqw 1cqw rgba(0,0,0,.34),
+    0 0 0 .16cqw rgba(60,231,151,.4),
+    0 0 1.2cqw rgba(60,231,151,.18);
+}
+
+.bamboo-team-orange .bamboo-panda {
+  box-shadow:
+    inset 0 -.7cqw 1.25cqw rgba(0,0,0,.24),
+    0 .75cqw 1cqw rgba(0,0,0,.34),
+    0 0 0 .16cqw rgba(255,153,76,.42),
+    0 0 1.2cqw rgba(255,153,76,.18);
+}
+
+.bamboo-panda::before,
+.bamboo-panda::after {
+  top: -.72cqw;
+  width: 2.35cqw;
+  height: 2.35cqw;
+  background: radial-gradient(circle at 42% 38%,#2a302c 0 22%,#0f1412 64%);
+  box-shadow: inset 0 0 0 .12cqw rgba(255,255,255,.05);
+}
+
+.bamboo-panda::before { left: -.2cqw; }
+.bamboo-panda::after { right: -.2cqw; }
+
+.bamboo-panda>b,
+.bamboo-panda>em {
+  top: 1.7cqw;
+  width: 1.7cqw;
+  height: 2.15cqw;
+  background: radial-gradient(circle at 50% 42%,#080b0a 0 54%,#1f2622 56% 100%);
+}
+
+.bamboo-panda>b { left: 1.05cqw; }
+.bamboo-panda>em { right: 1.05cqw; }
+
+.bamboo-panda>span {
+  top: 4.05cqw;
+  width: 1cqw;
+  height: .66cqw;
+  background: #0d1210;
+  box-shadow: 0 .28cqw 0 -.18cqw rgba(255,255,255,.42);
+}
+
+.bamboo-panda img {
+  top: .78cqw;
+  width: 4.45cqw;
+  height: 4.45cqw;
+  border-width: .18cqw;
+  box-shadow: 0 .25cqw .65cqw rgba(0,0,0,.26);
+}
+
+.bamboo-shadow {
+  bottom: -.05cqw;
+  width: 6.4cqw;
+  height: 1.35cqw;
+  background: rgba(2,20,14,.48);
+  filter: blur(.34cqw);
+  animation: bamboo-character-shadow-v2 2.2s cubic-bezier(.4,0,.25,1) infinite alternate;
+  animation-delay: calc(var(--panda-index) * -.19s);
+}
+
+.bamboo-team.is-pulling .bamboo-player {
+  animation: bamboo-character-push-v2 .52s cubic-bezier(.2,.7,.25,1) 3;
+}
+
+.bamboo-team.is-resisting .bamboo-player {
+  animation: bamboo-character-brace-v2 .58s cubic-bezier(.25,.65,.25,1) 3;
+}
+
+.bamboo-team.impact-gift .bamboo-panda {
+  filter: saturate(1.12) brightness(1.07);
+}
+
+@keyframes bamboo-character-idle-v2 {
+  0% { transform: translateY(.08cqw) rotate(-.7deg) scaleY(.992); }
+  42% { transform: translateY(-.22cqw) rotate(.25deg) scaleY(1.008); }
+  100% { transform: translateY(-.52cqw) rotate(.7deg) scaleY(1.015); }
+}
+
+@keyframes bamboo-character-shadow-v2 {
+  from { transform: translateX(-50%) scale(1); opacity: .78; }
+  to { transform: translateX(-50%) scale(.88); opacity: .56; }
+}
+
+@keyframes bamboo-character-push-v2 {
+  0%,100% { transform: translateY(0) rotate(0) scale(1); }
+  28% { transform: translateY(.28cqw) rotate(-2.4deg) scale(1.035,.96); }
+  58% { transform: translateY(-.48cqw) rotate(2.9deg) scale(.98,1.035); }
+}
+
+@keyframes bamboo-character-brace-v2 {
+  0%,100% { transform: translateY(0) rotate(0) scale(1); }
+  35% { transform: translateY(.35cqw) rotate(2.1deg) scale(1.045,.955); }
+  68% { transform: translateY(.08cqw) rotate(-1.2deg) scale(1.015,.985); }
+}
