@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import type { BambooBattleState, BambooTeam } from './bambooBattle';
 import { applyFighterMotion, type FighterMotionRig } from './bambooMotion';
+import { createBambooCameraDirector } from './bambooCamera';
 
 interface BambooBattle3DProps {
   state: BambooBattleState;
@@ -164,7 +165,8 @@ export function BambooBattle3D({ state, greenCharacter, orangeCharacter }: Bambo
     scene.fog = new THREE.FogExp2(0x123e34, .032);
     const camera = new THREE.PerspectiveCamera(44, 9 / 16, .1, 80);
     camera.position.set(0, 7.2, 20.5);
-    camera.lookAt(0, 1.5, 0);
+    const cameraDirector = createBambooCameraDirector(camera);
+    camera.lookAt(0, 1.6, 0);
 
     scene.add(new THREE.HemisphereLight(0xd9fff0, 0x173328, 2.25));
     const key = new THREE.DirectionalLight(0xfff1ce, 4.4);
@@ -283,8 +285,7 @@ export function BambooBattle3D({ state, greenCharacter, orangeCharacter }: Bambo
       const width = Math.max(1, mount.clientWidth);
       const height = Math.max(1, mount.clientHeight);
       renderer.setSize(width, height, false);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
+      cameraDirector.resize(width, height);
     };
     const observer = new ResizeObserver(resize);
     observer.observe(mount);
@@ -376,8 +377,19 @@ export function BambooBattle3D({ state, greenCharacter, orangeCharacter }: Bambo
 
       greenLight.intensity = 14 + Math.max(0, liveState.position) * .28 + (impactTeam === 'green' ? impactPulse * 12 : 0);
       orangeLight.intensity = 14 + Math.max(0, -liveState.position) * .28 + (impactTeam === 'orange' ? impactPulse * 12 : 0);
-      camera.position.x += ((currentX * .34 + tremor * .06) - camera.position.x) * .05;
-      camera.lookAt(currentX * .28, 1.65, 0);
+      cameraDirector.update({
+        elapsed,
+        currentX,
+        velocity,
+        tremor,
+        impactAge,
+        impactStrength,
+        impactTeam,
+        status: liveState.status,
+        winner: liveState.winner,
+        fallProgress,
+        fallingTeam,
+      });
       renderer.render(scene, camera);
     };
     animate();
