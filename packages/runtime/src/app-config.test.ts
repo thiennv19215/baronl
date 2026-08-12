@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appConfigSchema, DEFAULT_CONFIG, mergeConfig } from "./app-config";
+import { appConfigSchema, DEFAULT_CONFIG, mergeConfig } from "./app-config.js";
 
 describe("desktop app config", () => {
   it("starts in free mode with loopback-only services", () => {

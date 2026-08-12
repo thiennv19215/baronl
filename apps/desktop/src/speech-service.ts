@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
-import type { AppConfig } from "./app-config";
+import type { AppConfig } from "@orbitstage/runtime";
 import type { StructuredLogger } from "./logger";
 
 interface SpeechServiceOptions {

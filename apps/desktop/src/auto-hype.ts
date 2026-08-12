@@ -1,6 +1,6 @@
-import type { AppConfig } from "./app-config";
+import type { AppConfig } from "@orbitstage/runtime";
 import type { AiService } from "./ai-service";
-import type { LiveEvent } from "./live-runtime";
+import type { LiveEvent } from "@orbitstage/runtime";
 import type { StructuredLogger } from "./logger";
 import type { SpeechService } from "./speech-service";
 

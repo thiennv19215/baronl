@@ -13,11 +13,11 @@ import {
 } from "electron";
 import { z } from "zod";
 import { AiService } from "./ai-service";
-import { appConfigSchema, publicConfig, type AppConfig, type SecretName } from "./app-config";
+import { appConfigSchema, publicConfig, type AppConfig, type SecretName } from "@orbitstage/runtime";
 import { AutoHypeEngine } from "./auto-hype";
 import { ConfigStore } from "./config-store";
 import { createDiagnosticBundle } from "./diagnostics";
-import { LiveRuntime, type LiveEvent } from "./live-runtime";
+import { LiveRuntime, type LiveEvent } from "@orbitstage/runtime";
 import { LocalStageServer } from "./local-server";
 import { StructuredLogger } from "./logger";
 import { SecretStore } from "./secret-store";
