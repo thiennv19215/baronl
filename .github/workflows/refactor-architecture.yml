@@ -77,12 +77,6 @@ jobs:
           const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, 'utf8'));
           rootPkg.scripts.build = rootPkg.scripts.build.replace('npm run build -w @orbitstage/shared &&', 'npm run build -w @orbitstage/shared && npm run build -w @orbitstage/runtime &&');
           fs.writeFileSync(rootPkgPath, JSON.stringify(rootPkg, null, 2) + '\n');
-
-          const ciPath = '.github/workflows/e2e.yml';
-          let ci = fs.readFileSync(ciPath, 'utf8');
-          ci = ci.replace('      - agent/stage-v2-productization', '      - agent/stage-v2-productization\n      - agent/architecture-cleanup');
-          ci = ci.replace('          npm run build -w @orbitstage/shared\n', '          npm run build -w @orbitstage/shared\n          npm run build -w @orbitstage/runtime\n');
-          fs.writeFileSync(ciPath, ci);
           NODE
 
           cat > packages/runtime/package.json <<'EOF'
