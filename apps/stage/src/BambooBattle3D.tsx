@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import type { BambooBattleState, BambooTeam } from './bambooBattle';
+import { applyFighterMotion, type FighterMotionRig } from './bambooMotion';
 
 interface BambooBattle3DProps {
   state: BambooBattleState;
@@ -86,8 +87,9 @@ function createFighter(team: BambooTeam, character: 'bear' | 'dog') {
   leftArm.rotation.z = -.14;
   rightArm.rotation.z = .14;
   model.add(leftArm, rightArm);
-  model.add(mesh(new THREE.SphereGeometry(.34, 18, 14), darkFur, [-.47, .32, .18], [1.2, .75, 1.4]));
-  model.add(mesh(new THREE.SphereGeometry(.34, 18, 14), darkFur, [.47, .32, .18], [1.2, .75, 1.4]));
+  const leftFoot = mesh(new THREE.SphereGeometry(.34, 18, 14), darkFur, [-.47, .32, .18], [1.2, .75, 1.4]);
+  const rightFoot = mesh(new THREE.SphereGeometry(.34, 18, 14), darkFur, [.47, .32, .18], [1.2, .75, 1.4]);
+  model.add(leftFoot, rightFoot);
   if (character === 'dog') {
     const tail = mesh(new THREE.CapsuleGeometry(.13, .62, 7, 12), darkFur, [0, 1.1, -.73]);
     tail.rotation.x = -.72;
@@ -105,6 +107,7 @@ function createFighter(team: BambooTeam, character: 'bear' | 'dog') {
   root.rotation.y = team === 'green' ? Math.PI / 2 : -Math.PI / 2;
   root.userData.model = model;
   root.userData.accent = accent;
+  root.userData.motion = { model, leftArm, rightArm, leftFoot, rightFoot } satisfies FighterMotionRig;
   return root;
 }
 
@@ -332,21 +335,27 @@ export function BambooBattle3D({ state, greenCharacter, orangeCharacter }: Bambo
       greenBear.rotation.z = 0;
       orangeBear.rotation.z = 0;
       const fallAge = elapsed - fallStartedAt;
+      const fallProgress = fallingTeam && fallAge >= 0 ? Math.min(1, fallAge / 1.55) : 0;
       if (fallingTeam && fallAge >= 0) {
         const fallDirection = fallingTeam === 'green' ? -1 : 1;
-        const fallProgress = Math.min(1, fallAge / 1.55);
         const fallingFighter = fallingTeam === 'green' ? greenBear : orangeBear;
         fallingFighter.position.x += fallDirection * fallProgress * fallProgress * 3.15;
         fallingFighter.position.y -= fallProgress * fallProgress * 3.1;
         fallingFighter.position.z += fallProgress * .55;
         fallingFighter.rotation.z = -fallDirection * fallProgress * 1.28;
       }
-      const greenModel = greenBear.userData.model as THREE.Group;
-      const orangeModel = orangeBear.userData.model as THREE.Group;
-      greenModel.rotation.x = -.22 - Math.sin(elapsed * 5.2) * .025 - (impactTeam === 'green' ? impactPulse * .14 : -impactPulse * .035);
-      orangeModel.rotation.x = -.22 - Math.sin(elapsed * 5.2 + 1.4) * .025 - (impactTeam === 'orange' ? impactPulse * .14 : -impactPulse * .035);
-      greenModel.position.y = Math.sin(elapsed * 4.5) * .035;
-      orangeModel.position.y = Math.sin(elapsed * 4.5 + 1.3) * .035;
+      const greenRig = greenBear.userData.motion as FighterMotionRig;
+      const orangeRig = orangeBear.userData.motion as FighterMotionRig;
+      applyFighterMotion(greenRig, {
+        team: 'green', elapsed, impactPulse, impactTeam, impactAge, velocity, position: liveState.position,
+        status: liveState.status, winner: liveState.winner, fallProgress,
+        isFalling: fallingTeam === 'green',
+      });
+      applyFighterMotion(orangeRig, {
+        team: 'orange', elapsed, impactPulse, impactTeam, impactAge, velocity, position: liveState.position,
+        status: liveState.status, winner: liveState.winner, fallProgress,
+        isFalling: fallingTeam === 'orange',
+      });
 
       shock.position.x = currentX;
       shock.scale.setScalar(1 + Math.max(0, impactAge) * 4.8);
