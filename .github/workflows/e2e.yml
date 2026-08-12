@@ -5,8 +5,7 @@ on:
     branches: [main]
   push:
     branches:
-      - agent/stage-v2-productization
-      - agent/architecture-cleanup
+      - main
 
 permissions:
   contents: read
