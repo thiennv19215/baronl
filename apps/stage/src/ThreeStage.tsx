@@ -242,7 +242,13 @@ export function ThreeStage({
         beat: beatRef.current,
       });
 
-      actors.update(elapsed, camera, Date.now());
+      const actorGiftActive = giftActiveRef.current || elapsed < giftPulseUntil;
+      actors.update(elapsed, camera, Date.now(), {
+        audioEnergy: audioEnergyRef.current,
+        musicPlaying: musicRef.current,
+        beat: beatRef.current,
+        giftActive: actorGiftActive,
+      });
       nightclub.setTheme(themeRef.current);
       nightclub.update(
         elapsed,
@@ -257,7 +263,7 @@ export function ThreeStage({
       const liveEnergy = liveRef.current ? THREE.MathUtils.clamp(audioEnergyRef.current, 0, 1) : 0.08;
       const greetingBoost = greetingRef.current ? 0.18 : 0;
       const speakingBoost = speakingRef.current ? 0.22 : 0;
-      const giftBoost = giftActiveRef.current || elapsed < giftPulseUntil ? 0.34 : 0;
+      const giftBoost = actorGiftActive ? 0.34 : 0;
       hostGlow.intensity = 4 + (liveEnergy + greetingBoost + speakingBoost + giftBoost) * 11;
 
       if (lunaTexture) {
@@ -266,7 +272,9 @@ export function ThreeStage({
         lunaPlane.position.y = 0.15 + hostBounce + (elapsed < giftPulseUntil ? Math.sin(Math.PI * (giftPulseUntil - elapsed) / 1.15) * 0.22 : 0);
         const hostScale = 1 + Math.sin(elapsed * 3.4) * 0.008 + (speakingRef.current ? 0.025 : 0);
         lunaPlane.scale.setScalar(hostScale);
-        lunaPlane.quaternion.copy(camera.quaternion);
+        const hostDx = camera.position.x - lunaPlane.position.x;
+        const hostDz = camera.position.z - lunaPlane.position.z;
+        lunaPlane.rotation.set(0, Math.atan2(hostDx, hostDz), 0);
       }
 
       const targetFov = interactionFocusRef.current ? 45 : giftActiveRef.current ? 47 : 52;
