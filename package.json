@@ -16,7 +16,7 @@
   },
   "scripts": {
     "dev": "concurrently -k -s first -n control,stage,desktop -c cyan,magenta,yellow \"npm run dev -w @orbitstage/control\" \"npm run dev -w @orbitstage/stage\" \"wait-on tcp:127.0.0.1:5173 tcp:127.0.0.1:5174 && npm run dev -w @orbitstage/desktop\"",
-    "build": "npm run assets:check && npm run build -w @orbitstage/shared && npm run build -w @orbitstage/live-service && npm run build -w @orbitstage/control && npm run build -w @orbitstage/stage && npm run build -w @orbitstage/desktop",
+    "build": "npm run assets:check && npm run build -w @orbitstage/shared && npm run build -w @orbitstage/runtime && npm run build -w @orbitstage/live-service && npm run build -w @orbitstage/control && npm run build -w @orbitstage/stage && npm run build -w @orbitstage/desktop",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run assets:check && npm run typecheck",
     "test": "vitest run --config vitest.config.ts",

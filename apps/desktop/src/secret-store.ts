@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { safeStorage } from "electron";
-import type { SecretName } from "./app-config";
+import type { SecretName } from "@orbitstage/runtime";
 
 type SecretDocument = Partial<Record<SecretName, string>>;
 

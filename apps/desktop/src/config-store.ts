@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { appConfigSchema, DEFAULT_CONFIG, mergeConfig, type AppConfig } from "./app-config";
+import { appConfigSchema, DEFAULT_CONFIG, mergeConfig, type AppConfig } from "@orbitstage/runtime";
 
 export class ConfigStore {
   readonly configPath: string;

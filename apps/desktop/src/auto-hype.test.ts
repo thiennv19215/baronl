@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AiService } from './ai-service';
-import { DEFAULT_CONFIG, type AppConfig } from './app-config';
+import { DEFAULT_CONFIG, type AppConfig } from "@orbitstage/runtime";
 import { AutoHypeEngine } from './auto-hype';
-import type { LiveEvent } from './live-runtime';
+import type { LiveEvent } from "@orbitstage/runtime";
 import type { StructuredLogger } from './logger';
 import type { SpeechService } from './speech-service';
 

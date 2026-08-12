@@ -2,9 +2,8 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { DEFAULT_CONFIG } from "./app-config";
-import { StructuredLogger } from "./logger";
-import { CULTIVATION_TITLES, LiveRuntime, normalizeViewerCommand, titleForLevel } from "./live-runtime";
+import { DEFAULT_CONFIG } from "./app-config.js";
+import { CULTIVATION_TITLES, LiveRuntime, normalizeViewerCommand, titleForLevel } from "./live-runtime.js";
 
 describe("viewer command compatibility", () => {
   it.each([
@@ -29,7 +28,7 @@ describe("cultivation progression", () => {
 
   it("restores viewer progress after a new runtime starts", async () => {
     const dataDirectory = await mkdtemp(path.join(tmpdir(), "orbitstage-progress-"));
-    const makeRuntime = () => new LiveRuntime({ config: DEFAULT_CONFIG, dataDirectory, logger: new StructuredLogger(dataDirectory), stageUrl: () => "http://127.0.0.1/stage", onEvent: () => undefined, onConfigPatch: async () => DEFAULT_CONFIG });
+    const makeRuntime = () => new LiveRuntime({ config: DEFAULT_CONFIG, dataDirectory, logger: { info: () => undefined, warn: () => undefined, error: () => undefined }, stageUrl: () => "http://127.0.0.1/stage", onEvent: () => undefined, onConfigPatch: async () => DEFAULT_CONFIG });
     try {
       const first = makeRuntime();
       await first.initialize();

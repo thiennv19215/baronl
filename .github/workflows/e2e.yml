@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - agent/stage-v2-productization
+      - agent/architecture-cleanup
 
 permissions:
   contents: read
@@ -37,6 +38,7 @@ jobs:
       - name: Build workspaces for E2E
         run: |
           npm run build -w @orbitstage/shared
+          npm run build -w @orbitstage/runtime
           npm run build -w @orbitstage/live-service
           npm run build -w @orbitstage/control
           npm run build -w @orbitstage/stage

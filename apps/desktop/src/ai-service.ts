@@ -1,4 +1,4 @@
-import type { AppConfig } from "./app-config";
+import type { AppConfig } from "@orbitstage/runtime";
 import type { StructuredLogger } from "./logger";
 
 interface AiServiceOptions {

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import AdmZip from "adm-zip";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_CONFIG } from "./app-config";
+import { DEFAULT_CONFIG } from "@orbitstage/runtime";
 import { createDiagnosticBundle } from "./diagnostics";
 import type { StructuredLogger } from "./logger";
 

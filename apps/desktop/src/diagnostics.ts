@@ -2,7 +2,7 @@ import { app } from "electron";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import AdmZip from "adm-zip";
-import type { AppConfig } from "./app-config";
+import type { AppConfig } from "@orbitstage/runtime";
 import type { StructuredLogger } from "./logger";
 import { redact } from "./logger";
 

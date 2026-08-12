@@ -3,8 +3,12 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import WebSocket from "ws";
 import { z } from "zod";
-import type { AppConfig } from "./app-config";
-import type { StructuredLogger } from "./logger";
+import type { AppConfig } from "./app-config.js";
+export interface RuntimeLogger {
+  info(event: string, data?: unknown): void;
+  warn(event: string, data?: unknown): void;
+  error(event: string, error: unknown, data?: unknown): void;
+}
 
 export type LiveEventType = "join" | "chat" | "follow" | "like" | "gift" | "disconnect" | "reconnect";
 export type ConnectionState = "offline" | "connecting" | "connected" | "reconnecting" | "error";
@@ -112,7 +116,7 @@ interface RuntimeSnapshot {
 interface LiveRuntimeOptions {
   config: AppConfig;
   dataDirectory: string;
-  logger: StructuredLogger;
+  logger: RuntimeLogger;
   stageUrl: () => string;
   onEvent: (event: { type: string; payload?: unknown }) => void;
   onConfigPatch: (patch: unknown) => Promise<AppConfig>;
