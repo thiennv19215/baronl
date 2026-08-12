@@ -47,22 +47,22 @@ jobs:
 
           const runtimeTestPath = 'packages/runtime/src/live-runtime.test.ts';
           let runtimeTest = fs.readFileSync(runtimeTestPath, 'utf8');
-          runtimeTest = runtimeTest.replace('from "./app-config"', 'from "./app-config.js"');
-          runtimeTest = runtimeTest.replace('import { StructuredLogger } from "./logger";\n', '');
-          runtimeTest = runtimeTest.replace('from "./live-runtime"', 'from "./live-runtime.js"');
+          runtimeTest = runtimeTest.replace(/from ["']\.\/app-config["']/g, 'from "./app-config.js"');
+          runtimeTest = runtimeTest.replace(/import \{ StructuredLogger \} from ["']\.\/logger["'];\n/g, '');
+          runtimeTest = runtimeTest.replace(/from ["']\.\/live-runtime["']/g, 'from "./live-runtime.js"');
           runtimeTest = runtimeTest.replace('logger: new StructuredLogger(dataDirectory)', 'logger: { info: () => undefined, warn: () => undefined, error: () => undefined }');
           fs.writeFileSync(runtimeTestPath, runtimeTest);
 
           const configTestPath = 'packages/runtime/src/app-config.test.ts';
           let configTest = fs.readFileSync(configTestPath, 'utf8');
-          configTest = configTest.replace('from "./app-config"', 'from "./app-config.js"');
+          configTest = configTest.replace(/from ["']\.\/app-config["']/g, 'from "./app-config.js"');
           fs.writeFileSync(configTestPath, configTest);
 
           for (const file of fs.readdirSync('apps/desktop/src').filter((name) => name.endsWith('.ts'))) {
             const path = `apps/desktop/src/${file}`;
             let text = fs.readFileSync(path, 'utf8');
-            text = text.replaceAll('from "./app-config"', 'from "@orbitstage/runtime"');
-            text = text.replaceAll('from "./live-runtime"', 'from "@orbitstage/runtime"');
+            text = text.replace(/from ["']\.\/app-config["']/g, 'from "@orbitstage/runtime"');
+            text = text.replace(/from ["']\.\/live-runtime["']/g, 'from "@orbitstage/runtime"');
             fs.writeFileSync(path, text);
           }
 
@@ -70,6 +70,7 @@ jobs:
           const desktopPkg = JSON.parse(fs.readFileSync(desktopPkgPath, 'utf8'));
           desktopPkg.dependencies['@orbitstage/runtime'] = '1.0.0';
           desktopPkg.dependencies = Object.fromEntries(Object.entries(desktopPkg.dependencies).sort(([a], [b]) => a.localeCompare(b)));
+          desktopPkg.scripts.typecheck = 'npm run build -w @orbitstage/runtime && tsc -p tsconfig.json --noEmit';
           fs.writeFileSync(desktopPkgPath, JSON.stringify(desktopPkg, null, 2) + '\n');
 
           const rootPkgPath = 'package.json';
